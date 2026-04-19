@@ -1,9 +1,10 @@
 'use client'
 
 import { useAppState } from '@/context/AppContext'
-import { getAllFolderPaths } from '@/lib/folderUtils'
+import { getAllFolderPaths, buildFolderTree } from '@/lib/folderUtils'
 import { isOverdue } from '@/lib/predicates'
 import NavItem from './NavItem'
+import FolderTreeNode from './FolderTreeNode'
 import Icon from '@/components/ui/Icon'
 
 const NAV_ITEMS = [
@@ -20,6 +21,7 @@ export default function Sidebar() {
   const folders = getAllFolderPaths(entries)
   const inboxCount = entries.filter((e) => !e.folder).length
   const overdueCount = entries.filter((e) => isOverdue(e)).length
+  const tree = buildFolderTree(entries)
   const rootFolders = [...new Set(folders.map((f) => f.split('/')[0]))]
 
   const setView = (v: string) => {
@@ -79,7 +81,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav style={{ padding: '10px 6px', flex: 1, overflowY: 'auto' }}>
+      <nav style={{ padding: '10px 6px', flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
         {NAV_ITEMS.map((item) => (
           <NavItem
             key={item.id}
@@ -123,25 +125,25 @@ export default function Sidebar() {
                 All
               </span>
             </div>
-            {rootFolders.map((root) => (
-              <NavItem
-                key={root}
-                item={{ id: `folder:${root}`, label: root, icon: 'folder', badge: entries.filter((e) => e.folder?.startsWith(root)).length }}
-                active={view === `folder:${root}`}
-                onClick={() => setView(`folder:${root}`)}
-                collapsed={collapsed}
+            {tree.map((node) => (
+              <FolderTreeNode
+                key={node.path}
+                node={node}
+                entries={entries}
+                depth={0}
+                variant="sidebar"
               />
             ))}
           </>
         )}
-        {collapsed && rootFolders.length > 0 && (
+        {collapsed && tree.length > 0 && (
           <div style={{ marginTop: 8 }}>
-            {rootFolders.map((root) => (
+            {tree.map((node) => (
               <NavItem
-                key={root}
-                item={{ id: `folder:${root}`, label: root, icon: 'folder' }}
-                active={view === `folder:${root}`}
-                onClick={() => setView(`folder:${root}`)}
+                key={node.path}
+                item={{ id: `folder:${node.path}`, label: node.name, icon: 'folder' }}
+                active={view === `folder:${node.path}`}
+                onClick={() => setView(`folder:${node.path}`)}
                 collapsed={collapsed}
               />
             ))}

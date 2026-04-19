@@ -6,10 +6,9 @@ import { getAllFolderPaths } from '@/lib/folderUtils'
 import Icon from '@/components/ui/Icon'
 
 export default function SettingsView() {
-  const { state } = useAppState()
+  const { state, dispatch } = useAppState()
   const { entries } = state
   const [tab, setTab] = useState<'entities' | 'tags' | 'folders'>('entities')
-  const [newVal, setNewVal] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
   const [editVal, setEditVal] = useState('')
 
@@ -30,6 +29,88 @@ export default function SettingsView() {
     return entries.filter((e) => e.folder === item).length
   }
 
+  const handleSaveEdit = () => {
+    if (!editId || editVal === editId) {
+      setEditId(null)
+      setEditVal('')
+      return
+    }
+
+    const updatedEntries = entries.map((e) => {
+      if (tab === 'entities' && e.entity === editId) return { ...e, entity: editVal }
+      if (tab === 'folders' && e.folder === editId) return { ...e, folder: editVal }
+      if (tab === 'tags' && e.tags.includes(editId)) {
+        return { ...e, tags: e.tags.map((t) => (t === editId ? editVal : t)) }
+      }
+      return e
+    })
+
+    dispatch({ type: 'SET_ENTRIES', payload: updatedEntries })
+    setEditId(null)
+    setEditVal('')
+  }
+
+  const handleAdd = () => {
+    if (!editVal) return
+    
+    const updatedEntries = [...entries]
+    const newId = Math.floor(Math.random() * 1000000)
+    if (tab === 'entities') {
+      updatedEntries.push({
+        id: newId,
+        text: '',
+        timestamp: new Date().toISOString(),
+        actionDate: null,
+        entity: editVal,
+        tags: [],
+        folder: null,
+        amount: 0,
+        amountType: 'inflow',
+        timeLogs: []
+      })
+    } else if (tab === 'tags') {
+      updatedEntries.push({
+        id: newId,
+        text: '',
+        timestamp: new Date().toISOString(),
+        actionDate: null,
+        entity: null,
+        tags: [editVal],
+        folder: null,
+        amount: 0,
+        amountType: 'inflow',
+        timeLogs: []
+      })
+    } else if (tab === 'folders') {
+      updatedEntries.push({
+        id: newId,
+        text: '',
+        timestamp: new Date().toISOString(),
+        actionDate: null,
+        entity: null,
+        tags: [],
+        folder: editVal,
+        amount: 0,
+        amountType: 'inflow',
+        timeLogs: []
+      })
+    }
+
+    dispatch({ type: 'SET_ENTRIES', payload: updatedEntries })
+    setEditId(null)
+    setEditVal('')
+  }
+
+  const startEdit = (item: string) => {
+    setEditId(item)
+    setEditVal(item)
+  }
+
+  const cancelEdit = () => {
+    setEditId(null)
+    setEditVal('')
+  }
+
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: '40px 24px 80px' }}>
       <h2 style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em', marginBottom: 4 }}>Settings</h2>
@@ -42,7 +123,7 @@ export default function SettingsView() {
         {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => { setTab(t.id); setNewVal(''); setEditId(null) }}
+            onClick={() => { setTab(t.id); setEditId(null); setEditVal('') }}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
@@ -73,25 +154,69 @@ export default function SettingsView() {
             No {active.label.toLowerCase()} found yet.
           </div>
         )}
-        {active.list.map((item, i) => (
-          <div
-            key={item}
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            placeholder={`Add new ${active.label.toLowerCase()}...`}
+            value={editVal}
+            onChange={(e) => setEditVal(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
             style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px',
-              borderBottom: i < active.list.length - 1 ? '1px solid var(--color-border)' : 'none',
+              flex: 1, padding: '6px 12px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 6, outline: 'none',
             }}
+          />
+          <button 
+            onClick={handleAdd} 
+            style={{ padding: '6px 12px', fontSize: 12, background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
           >
-            <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--color-accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Icon name={active.icon} size={13} color="var(--color-accent)" />
+            Add
+          </button>
+        </div>
+        {active.list.map((item, i) => {
+          const isEditing = editId === item
+          return (
+            <div
+              key={item}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px',
+                borderBottom: i < active.list.length - 1 ? '1px solid var(--color-border)' : 'none',
+              }}
+            >
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--color-accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name={active.icon} size={13} color="var(--color-accent)" />
+              </div>
+              {isEditing ? (
+                <div style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    autoFocus
+                    value={editVal}
+                    onChange={(e) => setEditVal(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveEdit()
+                      if (e.key === 'Escape') cancelEdit()
+                    }}
+                    style={{
+                      flex: 1, padding: '4px 8px', fontSize: 14, border: '1px solid var(--color-accent)', borderRadius: 4, outline: 'none',
+                    }}
+                  />
+                  <button onClick={handleSaveEdit} style={{ padding: '4px 8px', fontSize: 12, background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
+                  <button onClick={cancelEdit} style={{ padding: '4px 8px', fontSize: 12, background: 'var(--color-bg3)', color: 'var(--color-text)', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                </div>
+              ) : (
+                <>
+                  <span
+                    onClick={() => startEdit(item)}
+                    style={{ flex: 1, fontSize: 14, color: 'var(--color-text)', cursor: 'pointer' }}
+                  >
+                    {tab === 'tags' ? `#${item}` : item}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
+                    {getCount(item)} entries
+                  </span>
+                </>
+              )}
             </div>
-            <span style={{ flex: 1, fontSize: 14, color: 'var(--color-text)' }}>
-              {tab === 'tags' ? `#${item}` : item}
-            </span>
-            <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
-              {getCount(item)} entries
-            </span>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

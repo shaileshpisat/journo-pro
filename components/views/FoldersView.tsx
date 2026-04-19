@@ -22,7 +22,7 @@ export default function FoldersView() {
       )}
       <div>
         {tree.map((node) => (
-          <FolderTreeNode key={node.path} node={node} entries={entries} depth={0} />
+          <FolderTreeNode key={node.path} node={node} entries={entries} depth={0} variant="view" />
         ))}
       </div>
     </div>

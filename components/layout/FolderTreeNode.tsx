@@ -11,14 +11,16 @@ interface FolderTreeNodeProps {
   node: FolderNode
   entries: Entry[]
   depth?: number
+  variant?: 'sidebar' | 'view'
 }
 
-export default function FolderTreeNode({ node, entries, depth = 0 }: FolderTreeNodeProps) {
+export default function FolderTreeNode({ node, entries, depth = 0, variant = 'view' }: FolderTreeNodeProps) {
   const { dispatch } = useAppState()
   const [open, setOpen] = useState(depth < 2)
   const [hovered, setHovered] = useState(false)
   const [showMove, setShowMove] = useState(false)
 
+  const isSidebar = variant === 'sidebar'
   const totalCount = entries.filter((e) => folderMatches(e.folder, node.path)).length
   const totalIn = entries
     .filter((e) => folderMatches(e.folder, node.path) && e.amountType === 'inflow')
@@ -29,7 +31,7 @@ export default function FolderTreeNode({ node, entries, depth = 0 }: FolderTreeN
   const hasChildren = node.children.length > 0
 
   return (
-    <div style={{ marginLeft: depth > 0 ? 20 : 0 }}>
+    <div style={{ marginLeft: depth > 0 ? (isSidebar ? 8 : 20) : 0 }}>
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -37,9 +39,9 @@ export default function FolderTreeNode({ node, entries, depth = 0 }: FolderTreeN
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          padding: '10px 14px',
+          padding: isSidebar ? '6px 14px' : '10px 14px',
           borderRadius: 10,
-          marginBottom: 4,
+          marginBottom: isSidebar ? 2 : 4,
           background: hovered ? '#fff' : 'transparent',
           border: `1px solid ${hovered ? 'var(--color-border)' : 'transparent'}`,
           boxShadow: hovered ? '0 1px 6px rgba(0,0,0,0.05)' : 'none',
@@ -57,28 +59,43 @@ export default function FolderTreeNode({ node, entries, depth = 0 }: FolderTreeN
             <span style={{ width: 12 }} />
           )}
         </span>
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            background: 'var(--color-accent-light)',
-            borderRadius: 7,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <Icon name="folder" size={14} color="var(--color-accent)" />
-        </div>
-        <div style={{ flex: 1 }} onClick={() => dispatch({ type: 'SET_VIEW', payload: `folder:${node.path}` })}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)' }}>{node.name}</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text3)' }}>
-            {totalCount} {totalCount === 1 ? 'entry' : 'entries'}
-            {hasChildren ? ` · ${node.children.length} sub-folders` : ''}
+        {!isSidebar && (
+          <div
+            style={{
+              width: 30,
+              height: 30,
+              background: 'var(--color-accent-light)',
+              borderRadius: 7,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Icon name="folder" size={14} color="var(--color-accent)" />
           </div>
+        )}
+        {isSidebar && (
+          <div style={{ flexShrink: 0, display: 'flex' }}>
+            <Icon name="folder" size={14} color="var(--color-accent)" />
+          </div>
+        )}
+        <div style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={() => dispatch({ type: 'SET_VIEW', payload: `folder:${node.path}` })}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
+            {isSidebar ? (
+              <>{node.name} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--color-text3)', marginLeft: 4 }}>({totalCount})</span></>
+            ) : (
+              node.name
+            )}
+          </div>
+          {!isSidebar && (
+            <div style={{ fontSize: 11, color: 'var(--color-text3)' }}>
+              {totalCount} {totalCount === 1 ? 'entry' : 'entries'}
+              {hasChildren ? ` · ${node.children.length} sub-folders` : ''}
+            </div>
+          )}
         </div>
-        {!hovered && (
+        {!isSidebar && !hovered && (
           <div style={{ textAlign: 'right' }}>
             {totalIn > 0 && (
               <div style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: 'var(--color-green)' }}>
@@ -92,7 +109,7 @@ export default function FolderTreeNode({ node, entries, depth = 0 }: FolderTreeN
             )}
           </div>
         )}
-        {hovered && (
+        {!isSidebar && hovered && (
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -127,12 +144,12 @@ export default function FolderTreeNode({ node, entries, depth = 0 }: FolderTreeN
         <div
           style={{
             borderLeft: '1px dashed var(--color-border)',
-            marginLeft: 22,
+            marginLeft: isSidebar ? 8 : 22,
             paddingLeft: 4,
           }}
         >
           {node.children.map((child) => (
-            <FolderTreeNode key={child.path} node={child} entries={entries} depth={depth + 1} />
+            <FolderTreeNode key={child.path} node={child} entries={entries} depth={depth + 1} variant={variant} />
           ))}
         </div>
       )}
