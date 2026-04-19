@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JournoPro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #FAFAF8;
+    --bg2: #F3F2EE;
+    --bg3: #ECEAE4;
+    --border: #E2DFD8;
+    --text: #1A1A18;
+    --text2: #6B6860;
+    --text3: #A8A59E;
+    --accent: oklch(0.60 0.09 52);
+    --accent-light: oklch(0.94 0.04 52);
+    --green: oklch(0.50 0.13 145);
+    --green-light: oklch(0.94 0.06 145);
+    --red: oklch(0.52 0.14 25);
+    --red-light: oklch(0.95 0.05 25);
+    --amber: oklch(0.70 0.10 70);
+    --amber-light: oklch(0.95 0.04 70);
+    --sidebar-w: 220px;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  html, body, #root { height: 100%; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+  * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+  /* Tweaks panel */
+  #tweaks-panel {
+    position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; width: 220px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+    display: none; flex-direction: column; gap: 12px;
+  }
+  #tweaks-panel.visible { display: flex; }
+  #tweaks-panel h4 { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+  .tweak-row { display: flex; flex-direction: column; gap: 4px; }
+  .tweak-row label { font-size: 12px; color: var(--text2); }
+  .tweak-row select, .tweak-row input[type=range] { width: 100%; }
+  .tweak-row select { padding: 4px 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg2); font-family: inherit; font-size: 12px; color: var(--text); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="tweaks-panel">
+  <h4>Tweaks</h4>
+  <div class="tweak-row"><label>Sidebar</label><select id="tw-sidebar"><option value="expanded">Expanded</option><option value="collapsed">Collapsed</option></select></div>
+  <div class="tweak-row"><label>Card density</label><select id="tw-density"><option value="medium">Medium</option><option value="compact">Compact</option><option value="detailed">Detailed</option></select></div>
+  <div class="tweak-row"><label>Font size</label><input type="range" id="tw-fontsize" min="12" max="17" step="1" value="14"/></div>
+</div>
+
+<script type="text/babel" data-presets="react" data-plugins="">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const today = new Date();
+const fmt = (d) => d.toISOString().split('T')[0];
+const daysAgo = (n) => { const d = new Date(today); d.setDate(d.getDate() - n); return fmt(d); };
+const daysAhead = (n) => { const d = new Date(today); d.setDate(d.getDate() + n); return fmt(d); };
+
+const SEED_ENTRIES = [
+  { id: 1, text: "Received payment from Acme Corp for Q1 consulting", timestamp: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 14).toISOString(), actionDate: null, tags: ["consulting", "payment"], folder: "Clients/Acme Corp", amount: 4500, amountType: "inflow", entity: "Acme Corp" },
+  { id: 2, text: "Paid AWS invoice for March hosting", timestamp: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 32).toISOString(), actionDate: null, tags: ["infrastructure", "cloud"], folder: "Expenses/SaaS", amount: 312, amountType: "outflow", entity: "AWS" },
+  { id: 3, text: "Call with Sarah about product roadmap — follow up on pricing", timestamp: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 5).toISOString(), actionDate: daysAhead(2), tags: ["meeting", "product"], folder: null, amount: null, amountType: null, entity: "Sarah" },
+  { id: 4, text: "Subscribed to Figma team plan renewal", timestamp: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 14, 21).toISOString(), actionDate: null, tags: ["design", "saas"], folder: "Expenses/SaaS", amount: 45, amountType: "outflow", entity: "Figma" },
+  { id: 5, text: "Sent invoice #112 to Beta Solutions for web dev work", timestamp: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15, 47).toISOString(), actionDate: daysAhead(7), tags: ["invoice", "webdev"], folder: "Clients/Beta Solutions", amount: 2800, amountType: "inflow", entity: "Beta Solutions" },
+  { id: 6, text: "Follow up with Ravi on the contract draft", timestamp: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 16, 3).toISOString(), actionDate: fmt(today), tags: ["legal", "contract"], folder: null, amount: null, amountType: null, entity: "Ravi" },
+  { id: 7, text: "Team lunch — split bill with design team", timestamp: new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 13, 10).toISOString(), actionDate: null, tags: ["team", "lunch"], folder: "Expenses/Meals", amount: 180, amountType: "outflow", entity: null },
+  { id: 8, text: "Received deposit from Gamma Inc — project kickoff", timestamp: new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 9, 45).toISOString(), actionDate: fmt(today), tags: ["kickoff", "project"], folder: "Clients/Gamma Inc", amount: 1500, amountType: "inflow", entity: "Gamma Inc" },
+  { id: 9, text: "Review and sign vendor agreement with TechParts Ltd", timestamp: daysAgo(10) + "T09:00:00", actionDate: daysAgo(3), tags: ["legal", "vendor"], folder: null, amount: null, amountType: null, entity: "TechParts Ltd" },
+  { id: 10, text: "Send revised proposal to Metro Agency", timestamp: daysAgo(8) + "T11:30:00", actionDate: daysAgo(2), tags: ["proposal", "sales"], folder: null, amount: 6200, amountType: "inflow", entity: "Metro Agency" },
+  { id: 11, text: "Reconcile expense reports for Q1", timestamp: daysAgo(5) + "T14:00:00", actionDate: daysAgo(1), tags: ["accounting", "quarterly"], folder: "Finance/Reporting", amount: null, amountType: null, entity: null },
+  { id: 12, text: "Interesting idea: build a client dashboard for tracking invoices", timestamp: daysAgo(2) + "T16:20:00", actionDate: null, tags: ["idea", "product"], folder: null, amount: null, amountType: null, entity: null },
+  { id: 13, text: "Check tax liability estimate before end of quarter", timestamp: daysAgo(3) + "T10:00:00", actionDate: null, tags: ["tax", "finance"], folder: "Finance/Tax", amount: null, amountType: null, entity: null },
+  { id: 14, text: "Travel to Bangalore for client meeting — flight booked", timestamp: daysAgo(1) + "T08:00:00", actionDate: daysAhead(3), tags: ["travel", "client"], folder: "Expenses/Travel", amount: 8200, amountType: "outflow", entity: "IndiGo" },
+];
+
+function parseEntry(text) {
+  const result = { tags: [], folder: null, amount: null, amountType: null, entity: null, actionDate: null };
+  // entity @name
+  const entityMatch = text.match(/@([\w]+(?:\s[\w]+)?)/);
+  if (entityMatch) result.entity = entityMatch[1];
+  // tags #tag
+  const tagMatches = [...text.matchAll(/#([\w]+)/g)];
+  result.tags = tagMatches.map(m => m[1]);
+  // folder /folder
+  const folderMatch = text.match(/\/([\w]+)/);
+  if (folderMatch) result.folder = folderMatch[1];
+  // amount $123 or ₹123 or 1234
+  const amtMatch = text.match(/[\$₹€£]?\s?(\d[\d,]*(?:\.\d+)?)\s?[kK]?/);
+  if (amtMatch) {
+    let val = parseFloat(amtMatch[1].replace(/,/g, ''));
+    if (amtMatch[0].toLowerCase().includes('k')) val *= 1000;
+    result.amount = val;
+  }
+  // amount type
+  if (/\b(received|inflow|income|credit|got)\b/i.test(text)) result.amountType = 'inflow';
+  else if (/\b(paid|outflow|expense|debit|spent|cost)\b/i.test(text)) result.amountType = 'outflow';
+  // action date
+  if (/\btomorrow\b/i.test(text)) { result.actionDate = daysAhead(1); }
+  else if (/\bnext week\b/i.test(text)) { result.actionDate = daysAhead(7); }
+  else if (/\bmonday\b/i.test(text)) { result.actionDate = daysAhead(1); }
+  else if (/\bfriday\b/i.test(text)) { result.actionDate = daysAhead(5); }
+  const dateMatch = text.match(/\b(\d{1,2})[\/\-](\d{1,2})\b/);
+  if (dateMatch) {
+    const d = new Date(today.getFullYear(), parseInt(dateMatch[1]) - 1, parseInt(dateMatch[2]));
+    result.actionDate = fmt(d);
+  }
+  return result;
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
+  const diffDays = Math.round((d - today) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  if (diffDays === -1) return 'Yesterday';
+  if (diffDays > 0 && diffDays < 7) return d.toLocaleDateString('en-US', { weekday: 'long' });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function fmtAmt(amount, type) {
+  if (amount === null) return null;
+  const sign = type === 'inflow' ? '+' : type === 'outflow' ? '−' : '';
+  const color = type === 'inflow' ? 'var(--green)' : type === 'outflow' ? 'var(--red)' : 'var(--text2)';
+  return { label: `${sign}$${amount.toLocaleString()}`, color };
+}
+function isToday(iso) { return iso && iso.startsWith(fmt(today)); }
+function isPast(isoDate) { if (!isoDate) return false; return isoDate < fmt(today); }
+function isOverdue(entry) { return entry.actionDate && entry.actionDate < fmt(today); }
+
+// ── FOLDER TREE UTILS ─────────────────────────────────────────────────────────
+// folder is stored as path string: "Parent/Child/Grandchild"
+function folderPathParts(path) { return path ? path.split('/') : []; }
+function folderLabel(path) { if (!path) return null; const p = path.split('/'); return p[p.length - 1]; }
+function folderParent(path) { if (!path) return null; const p = path.split('/'); return p.length > 1 ? p.slice(0, -1).join('/') : null; }
+function folderMatches(entryFolder, filterFolder) {
+  // entry is in filterFolder if its folder path starts with filterFolder
+  if (!entryFolder) return false;
+  return entryFolder === filterFolder || entryFolder.startsWith(filterFolder + '/');
+}
+function buildFolderTree(allPaths) {
+  // Returns nested object: { name, path, children: [] }
+  const roots = [];
+  const map = {};
+  const sorted = [...new Set(allPaths)].sort();
+  sorted.forEach(path => {
+    const parts = path.split('/');
+    let current = roots;
+    let built = '';
+    parts.forEach((part, i) => {
+      built = built ? built + '/' + part : part;
+      if (!map[built]) {
+        const node = { name: part, path: built, children: [] };
+        map[built] = node;
+        current.push(node);
+      }
+      current = map[built].children;
+    });
+  });
+  return roots;
+}
+// Flat list of all folder paths including ancestors
+function getAllFolderPaths(entries) {
+  const paths = new Set();
+  entries.forEach(e => {
+    if (!e.folder) return;
+    const parts = e.folder.split('/');
+    parts.forEach((_, i) => paths.add(parts.slice(0, i + 1).join('/')));
+  });
+  return [...paths];
+}
+
+// ── ICON COMPONENTS ───────────────────────────────────────────────────────────
+const Icon = ({ name, size = 16, color = 'currentColor' }) => {
+  const icons = {
+    home: <path d="M3 9.5L8 4.5L13 9.5V14.5H10V11H6V14.5H3V9.5Z" stroke={color} strokeWidth="1.4" fill="none" strokeLinejoin="round"/>,
+    inbox: <><rect x="2" y="7" width="12" height="7" rx="1.5" stroke={color} strokeWidth="1.4" fill="none"/><path d="M2 7L4.5 3H11.5L14 7" stroke={color} strokeWidth="1.4" fill="none" strokeLinejoin="round"/></>,
+    folder: <><path d="M2 5.5C2 4.67 2.67 4 3.5 4H6.5L8 6H12.5C13.33 6 14 6.67 14 7.5V11.5C14 12.33 13.33 13 12.5 13H3.5C2.67 13 2 12.33 2 11.5V5.5Z" stroke={color} strokeWidth="1.4" fill="none"/></>,
+    calendar: <><rect x="2" y="3" width="12" height="11" rx="1.5" stroke={color} strokeWidth="1.4" fill="none"/><path d="M2 7H14" stroke={color} strokeWidth="1.4"/><path d="M5 2V4M11 2V4" stroke={color} strokeWidth="1.4" strokeLinecap="round"/></>,
+    search: <><circle cx="7" cy="7" r="4.5" stroke={color} strokeWidth="1.4" fill="none"/><path d="M10.5 10.5L13.5 13.5" stroke={color} strokeWidth="1.4" strokeLinecap="round"/></>,
+    chevronLeft: <path d="M10 3L5 8L10 13" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>,
+    chevronRight: <path d="M6 3L11 8L6 13" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>,
+    chevronDown: <path d="M3 6L8 11L13 6" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>,
+    x: <path d="M4 4L12 12M12 4L4 12" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>,
+    plus: <path d="M8 3V13M3 8H13" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>,
+    tag: <><path d="M2 2H8L13.5 7.5L8.5 12.5L3 7V2Z" stroke={color} strokeWidth="1.4" fill="none" strokeLinejoin="round"/><circle cx="5" cy="5" r="1" fill={color}/></>,
+    entity: <><circle cx="8" cy="5.5" r="2.5" stroke={color} strokeWidth="1.4" fill="none"/><path d="M3 13C3 10.24 5.24 8 8 8C10.76 8 13 10.24 13 13" stroke={color} strokeWidth="1.4" fill="none" strokeLinecap="round"/></>,
+    amount: <><circle cx="8" cy="8" r="5.5" stroke={color} strokeWidth="1.4" fill="none"/><path d="M8 5V11M6.5 6.5H9C9.55 6.5 10 6.95 10 7.5C10 8.05 9.55 8.5 9 8.5H7C6.45 8.5 6 8.95 6 9.5C6 10.05 6.45 10.5 7 10.5H9.5" stroke={color} strokeWidth="1.2" strokeLinecap="round"/></>,
+    clock: <><circle cx="8" cy="8" r="5.5" stroke={color} strokeWidth="1.4" fill="none"/><path d="M8 5V8.5L10 10" stroke={color} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></>,
+    alert: <><path d="M8 2L14 13H2L8 2Z" stroke={color} strokeWidth="1.4" fill="none" strokeLinejoin="round"/><path d="M8 7V9.5" stroke={color} strokeWidth="1.5" strokeLinecap="round"/><circle cx="8" cy="11" r="0.6" fill={color}/></>,
+    edit: <><path d="M10 3L13 6L6 13H3V10L10 3Z" stroke={color} strokeWidth="1.4" fill="none" strokeLinejoin="round"/></>,
+    arrowLeft: <path d="M12 8H4M4 8L7 5M4 8L7 11" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>,
+    menu: <path d="M3 5H13M3 8H13M3 11H13" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>,
+    dot: <circle cx="8" cy="8" r="3" fill={color}/>,
+    settings: <><circle cx="8" cy="8" r="2.5" stroke={color} strokeWidth="1.4" fill="none"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M3.5 12.5l1.1-1.1M11.4 4.6l1.1-1.1" stroke={color} strokeWidth="1.4" strokeLinecap="round"/></>,
+    trash: <><path d="M3 5h10M5 5V4a1 1 0 011-1h4a1 1 0 011 1v1M6 8v5M10 8v5M4 5l1 8h6l1-8" stroke={color} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/></>,
+    check: <path d="M3 8l4 4 6-7" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/>,
+    stopwatch: <><circle cx="8" cy="9" r="5" stroke={color} strokeWidth="1.4" fill="none"/><path d="M8 4V2M6.5 2h3" stroke={color} strokeWidth="1.4" strokeLinecap="round"/><path d="M8 9V6.5" stroke={color} strokeWidth="1.4" strokeLinecap="round"/><circle cx="8" cy="9" r="1" fill={color}/></>,
+    pause: <><rect x="4" y="3" width="3" height="10" rx="1" fill={color}/><rect x="9" y="3" width="3" height="10" rx="1" fill={color}/></>,
+    play: <path d="M5 3l9 5-9 5V3z" fill={color}/>,
+  };
+  return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">{icons[name]}</svg>;
+};
+
+// ── CHIP COMPONENT ────────────────────────────────────────────────────────────
+const Chip = ({ icon, label, color, bg, onRemove, small }) => (
+  <span style={{
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+    padding: small ? '2px 7px' : '3px 9px',
+    borderRadius: 99, fontSize: small ? 11 : 12, fontWeight: 500,
+    color: color || 'var(--text2)', background: bg || 'var(--bg3)',
+    border: '1px solid transparent', whiteSpace: 'nowrap',
+    lineHeight: 1.6,
+  }}>
+    {icon && <Icon name={icon} size={11} color={color || 'var(--text2)'}/>}
+    {label}
+    {onRemove && <span onClick={onRemove} style={{ cursor: 'pointer', opacity: 0.5, marginLeft: 1 }}>×</span>}
+  </span>
+);
+
+// Folder chip renders full path with "/" separators
+const FolderChip = ({ path, small }) => {
+  if (!path) return null;
+  const label = path.split('/').join(' / ');
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: small ? '2px 7px' : '3px 9px',
+      borderRadius: 99, fontSize: small ? 11 : 12, fontWeight: 500,
+      color: 'var(--accent)', background: 'var(--accent-light)',
+      whiteSpace: 'nowrap', lineHeight: 1.6,
+    }}>
+      <Icon name="folder" size={11} color="var(--accent)"/>
+      {label}
+    </span>
+  );
+};
+
+// ── FLOATING TIMER ───────────────────────────────────────────────────────────
+const FloatingTimer = ({ timer, entry, onStop }) => {
+  const [elapsed, setElapsed] = useState(timer.elapsed || 0);
+
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(Date.now() - timer.startedAt + (timer.baseElapsed || 0)), 200);
+    return () => clearInterval(id);
+  }, [timer.startedAt]);
+
+  const fmtElapsed = (ms) => {
+    const s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return h > 0
+      ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+      : `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+      background: 'var(--text)', color: '#fff', borderRadius: 14,
+      padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.22)', zIndex: 2000,
+      fontFamily: "'DM Sans', sans-serif", minWidth: 280,
+    }}>
+      {/* Pulsing dot */}
+      <span style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--red)', flexShrink: 0, animation: 'pulse 1s ease-in-out infinite' }}/>
+      {/* Entry label */}
+      <span style={{ flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {entry ? entry.text.slice(0, 48) + (entry.text.length > 48 ? '…' : '') : 'Timer running'}
+      </span>
+      {/* Elapsed */}
+      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 15, fontWeight: 500, letterSpacing: '0.04em', flexShrink: 0 }}>
+        {fmtElapsed(elapsed)}
+      </span>
+      {/* Stop */}
+      <button onClick={() => onStop(elapsed)} style={{
+        background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8,
+        padding: '5px 12px', color: '#fff', fontFamily: 'inherit', fontSize: 12,
+        fontWeight: 500, cursor: 'pointer', flexShrink: 0,
+      }}
+      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.22)'}
+      onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}>
+        Stop
+      </button>
+    </div>
+  );
+};
+
+// ── ENTRY CARD ─────────────────────────────────────────────────────────────────
+// minimal=true → compact card showing only text, action date, entity (for Needs Action / Action Today)
+const EntryCard = ({ entry, onClick, compact, overdue, minimal, timerActive, onTimerToggle }) => {
+  const amt = fmtAmt(entry.amount, entry.amountType);
+  return (
+    <div onClick={() => onClick(entry)} style={{
+      background: '#fff',
+      border: `1px solid ${overdue ? 'var(--red)' : 'var(--border)'}`,
+      borderRadius: var_radius(),
+      padding: minimal ? '8px 12px' : compact ? '10px 14px' : '13px 16px',
+      cursor: 'pointer',
+      transition: 'box-shadow 0.15s, border-color 0.15s',
+    }}
+    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.07)'; e.currentTarget.style.borderColor = overdue ? 'var(--red)' : '#ccc'; }}
+    onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = overdue ? 'var(--red)' : 'var(--border)'; }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.45, flex: 1 }}>{entry.text}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {!minimal && amt && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 500, color: amt.color, whiteSpace: 'nowrap' }}>{amt.label}</span>}
+          {onTimerToggle && (
+            <button onClick={e => { e.stopPropagation(); onTimerToggle(entry); }} title={timerActive ? 'Stop timer' : 'Start timer'} style={{
+              background: timerActive ? 'var(--red-light)' : 'var(--bg2)',
+              border: `1px solid ${timerActive ? 'var(--red)' : 'var(--border)'}`,
+              borderRadius: 6, padding: '3px 6px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 4,
+              color: timerActive ? 'var(--red)' : 'var(--text3)',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { if (!timerActive) { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}}
+            onMouseLeave={e => { if (!timerActive) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text3)'; }}}>
+              <Icon name={timerActive ? 'pause' : 'stopwatch'} size={12} color="currentColor"/>
+              {timerActive && <span style={{ fontSize: 11, fontWeight: 500 }}>Running</span>}
+            </button>
+          )}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6, alignItems: 'center' }}>
+        {minimal ? (
+          <>
+            {entry.actionDate && <Chip icon="clock" label={fmtDate(entry.actionDate)} bg={overdue ? 'var(--red-light)' : 'var(--amber-light)'} color={overdue ? 'var(--red)' : 'var(--amber)'} small/>}
+            {entry.entity && <Chip icon="entity" label={entry.entity} small/>}
+          </>
+        ) : (
+          <>
+            <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'DM Mono', monospace" }}>{fmtTime(entry.timestamp)}</span>
+            {entry.entity && <Chip icon="entity" label={entry.entity} small/>}
+            {entry.folder && <FolderChip path={entry.folder} small/>}
+            {entry.actionDate && (
+              <Chip icon="clock" label={fmtDate(entry.actionDate)}
+                bg={overdue ? 'var(--red-light)' : 'var(--amber-light)'}
+                color={overdue ? 'var(--red)' : 'var(--amber)'} small/>
+            )}
+            {entry.tags.map(t => <Chip key={t} label={`#${t}`} small/>)}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── TIMELINE (Added Today) ────────────────────────────────────────────────────
+const TodayTimeline = ({ entries, onClick, activeTimer, onTimerToggle }) => {
+  const sorted = [...entries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const byHour = {};
+  sorted.forEach(e => {
+    const h = new Date(e.timestamp).getHours();
+    if (!byHour[h]) byHour[h] = [];
+    byHour[h].push(e);
+  });
+  const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
+  const fmtHour = h => { const ampm = h >= 12 ? 'PM' : 'AM'; const h12 = h % 12 === 0 ? 12 : h % 12; return `${h12} ${ampm}`; };
+
+  return (
+    <div>
+      {hours.map((h, hi) => (
+        <div key={h} style={{ display: 'flex', gap: 0 }}>
+          {/* Hour label */}
+          <div style={{ width: 52, flexShrink: 0, paddingTop: 3 }}>
+            <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'DM Mono', monospace" }}>{fmtHour(h)}</span>
+          </div>
+          {/* Spine + dot */}
+          <div style={{ width: 1, background: 'var(--border)', flexShrink: 0, marginRight: 14, position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 7, left: -3.5, width: 8, height: 8, borderRadius: 99, background: 'var(--accent)', border: '2px solid var(--bg)' }}/>
+          </div>
+          {/* Cards */}
+          <div style={{ flex: 1, paddingBottom: 14 }}>
+            {byHour[h].map(e => {
+              const amt = fmtAmt(e.amount, e.amountType);
+              return (
+                <div key={e.id} onClick={() => onClick(e)} style={{
+                  background: '#fff', border: '1px solid var(--border)', borderRadius: 8,
+                  padding: '9px 13px', marginBottom: 6, cursor: 'pointer',
+                  transition: 'box-shadow 0.15s, border-color 0.15s',
+                }}
+                onMouseEnter={ev => { ev.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.07)'; ev.currentTarget.style.borderColor = '#ccc'; }}
+                onMouseLeave={ev => { ev.currentTarget.style.boxShadow = 'none'; ev.currentTarget.style.borderColor = 'var(--border)'; }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.45, flex: 1 }}>{e.text}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      {amt && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 500, color: amt.color, whiteSpace: 'nowrap' }}>{amt.label}</span>}
+                      {onTimerToggle && (
+                        <button onClick={ev => { ev.stopPropagation(); onTimerToggle(e); }} style={{ background: activeTimer?.entryId===e.id ? 'var(--red-light)' : 'var(--bg2)', border: `1px solid ${activeTimer?.entryId===e.id ? 'var(--red)' : 'var(--border)'}`, borderRadius: 6, padding: '3px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: activeTimer?.entryId===e.id ? 'var(--red)' : 'var(--text3)' }}>
+                          <Icon name={activeTimer?.entryId===e.id ? 'pause' : 'stopwatch'} size={12} color="currentColor"/>
+                          {activeTimer?.entryId===e.id && <span style={{ fontSize: 11, fontWeight: 500 }}>Running</span>}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 5, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'DM Mono', monospace" }}>{fmtTime(e.timestamp)}</span>
+                    {e.entity && <Chip icon="entity" label={e.entity} small/>}
+                    {e.folder && <FolderChip path={e.folder} small/>}
+                    {e.tags.map(t => <Chip key={t} label={`#${t}`} small/>)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+function var_radius() { return 'var(--radius)'; }
+
+// ── SECTION HEADER ──────────────────────────────────────────────────────────
+const SectionHead = ({ title, count, action }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{title}</span>
+      {count !== undefined && <span style={{ fontSize: 11, fontWeight: 600, background: count > 0 ? 'var(--red)' : 'var(--bg3)', color: count > 0 ? '#fff' : 'var(--text3)', borderRadius: 99, padding: '1px 7px', minWidth: 20, textAlign: 'center' }}>{count}</span>}
+    </div>
+    {action && <span onClick={action.fn} style={{ fontSize: 12, color: 'var(--accent)', cursor: 'pointer', fontWeight: 500 }}>{action.label}</span>}
+  </div>
+);
+
+// ── INPUT BOX ────────────────────────────────────────────────────────────────
+const JournalInput = ({ onAdd }) => {
+  const [text, setText] = useState('');
+  const [parsed, setParsed] = useState({});
+  const [focused, setFocused] = useState(false);
+  const ref = useRef();
+
+  useEffect(() => {
+    if (text.trim().length > 2) setParsed(parseEntry(text));
+    else setParsed({});
+  }, [text]);
+
+  const handleSubmit = () => {
+    if (!text.trim()) return;
+    const entry = {
+      id: Date.now(),
+      text: text.trim(),
+      timestamp: new Date().toISOString(),
+      ...parsed,
+      tags: parsed.tags || [],
+    };
+    onAdd(entry);
+    setText('');
+    setParsed({});
+    ref.current.focus();
+  };
+
+  const hasChips = parsed.entity || (parsed.tags && parsed.tags.length) || parsed.folder || parsed.amount || parsed.actionDate;
+  return (
+    <div style={{ width: '100%', maxWidth: 680, margin: '0 auto' }}>
+      <div style={{
+        background: '#fff', border: `1.5px solid ${focused ? 'var(--accent)' : 'var(--border)'}`,
+        borderRadius: 14, padding: '14px 18px',
+        boxShadow: focused ? '0 4px 24px rgba(0,0,0,0.08)' : '0 1px 6px rgba(0,0,0,0.04)',
+        transition: 'all 0.18s',
+      }}>
+        <textarea
+          ref={ref}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(); }}
+          placeholder="What's on your mind? Use @entity, #tag, /folder, $amount, tomorrow…"
+          style={{
+            width: '100%', border: 'none', outline: 'none', resize: 'none',
+            fontFamily: 'inherit', fontSize: 15, color: 'var(--text)',
+            background: 'transparent', lineHeight: 1.55, minHeight: 52, maxHeight: 120,
+          }}
+          rows={2}
+        />
+        {hasChips && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+            {parsed.entity && <Chip icon="entity" label={parsed.entity} bg="var(--bg2)" color="var(--text2)"/>}
+            {parsed.folder && <Chip icon="folder" label={parsed.folder} bg="var(--accent-light)" color="var(--accent)"/>}
+            {parsed.actionDate && <Chip icon="clock" label={fmtDate(parsed.actionDate)} bg="var(--amber-light)" color="var(--amber)"/>}
+            {parsed.amount && <Chip icon="amount" label={`${parsed.amountType === 'inflow' ? '+' : parsed.amountType === 'outflow' ? '−' : ''}$${parsed.amount.toLocaleString()}`} bg={parsed.amountType === 'inflow' ? 'var(--green-light)' : parsed.amountType === 'outflow' ? 'var(--red-light)' : 'var(--bg3)'} color={parsed.amountType === 'inflow' ? 'var(--green)' : parsed.amountType === 'outflow' ? 'var(--red)' : 'var(--text2)'}/>}
+            {(parsed.tags || []).map(t => <Chip key={t} icon="tag" label={`#${t}`}/>)}
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+          <button onClick={handleSubmit} style={{
+            background: text.trim() ? 'var(--accent)' : 'var(--bg3)',
+            color: text.trim() ? '#fff' : 'var(--text3)',
+            border: 'none', borderRadius: 8, padding: '7px 18px',
+            fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: text.trim() ? 'pointer' : 'default',
+            transition: 'all 0.15s',
+          }}>Add entry ⌘↵</button>
+        </div>
+      </div>
+      <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>All entries go to Inbox · Use @entity #tag /folder $amount</p>
+    </div>
+  );
+};
+
+// ── SIDEBAR FOLDER TREE ───────────────────────────────────────────────────────
+function SidebarFolderNode({ node, entries, view, setView, depth }) {
+  depth = depth || 0;
+  const hasChildren = node.children && node.children.length > 0;
+  const [open, setOpen] = useState(true);
+  const isActive = view === ('folder:' + node.path);
+  const count = entries.filter(function(e) { return folderMatches(e.folder, node.path); }).length;
+  const indent = 8 + depth * 14;
+
+  return (
+    <div>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 5,
+        paddingTop: 5, paddingBottom: 5, paddingRight: 10, paddingLeft: indent,
+        borderRadius: 7, cursor: 'pointer', marginBottom: 1,
+        background: isActive ? '#fff' : 'transparent',
+        color: isActive ? 'var(--text)' : 'var(--text2)',
+        fontWeight: isActive ? 500 : 400,
+        boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
+        transition: 'background 0.12s',
+      }}>
+        <span
+          onClick={function(e) { e.stopPropagation(); if (hasChildren) setOpen(function(o) { return !o; }); }}
+          style={{ width: 12, display: 'flex', alignItems: 'center', flexShrink: 0, color: 'var(--text3)' }}>
+          {hasChildren
+            ? <Icon name={open ? 'chevronDown' : 'chevronRight'} size={11}/>
+            : null}
+        </span>
+        <span
+          onClick={function() { setView('folder:' + node.path); }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1, overflow: 'hidden' }}>
+          <Icon name="folder" size={13} color={isActive ? 'var(--accent)' : 'var(--text3)'}/>
+          <span style={{ fontSize: 13, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
+          {count > 0 && <span style={{ fontSize: 11, color: 'var(--text3)', flexShrink: 0 }}>{count}</span>}
+        </span>
+      </div>
+      {open && hasChildren && (
+        <div>
+          {node.children.map(function(child) {
+            return <SidebarFolderNode key={child.path} node={child} entries={entries} view={view} setView={setView} depth={depth + 1}/>;
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SidebarFolderTree({ entries, view, setView }) {
+  const allPaths = getAllFolderPaths(entries);
+  const tree = buildFolderTree(allPaths);
+  return (
+    <div>
+      {tree.map(function(node) {
+        return <SidebarFolderNode key={node.path} node={node} entries={entries} view={view} setView={setView} depth={0}/>;
+      })}
+    </div>
+  );
+}
+
+// ── SIDEBAR ──────────────────────────────────────────────────────────────────
+const Sidebar = ({ view, setView, entries, collapsed, setCollapsed }) => {
+  const folders = getAllFolderPaths(entries);
+  const inboxCount = entries.filter(e => !e.folder).length;
+  const overdueCount = entries.filter(e => isOverdue(e)).length;
+
+  const navItems = [
+    { id: 'home', label: 'Home', icon: 'home' },
+    { id: 'inbox', label: 'Inbox', icon: 'inbox', badge: inboxCount },
+    { id: 'search', label: 'Search', icon: 'search' },
+    { id: 'calendar', label: 'Calendar', icon: 'calendar' },
+  ];
+
+  return (
+    <aside style={{
+      width: collapsed ? 52 : 'var(--sidebar-w)',
+      minWidth: collapsed ? 52 : 'var(--sidebar-w)',
+      background: 'var(--bg2)', borderRight: '1px solid var(--border)',
+      display: 'flex', flexDirection: 'column',
+      transition: 'width 0.2s, min-width 0.2s', overflow: 'hidden',
+      height: '100%',
+    }}>
+      {/* Logo + toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', padding: collapsed ? '16px 0' : '16px 14px', borderBottom: '1px solid var(--border)' }}>
+        {!collapsed && <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em', color: 'var(--text)' }}>journopro</span>}
+        <button onClick={() => setCollapsed(c => !c)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', padding: 4, borderRadius: 6, display: 'flex' }}>
+          <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={14}/>
+        </button>
+      </div>
+
+      {/* Nav */}
+      <nav style={{ padding: '10px 6px', flex: 1, overflowY: 'auto' }}>
+        {navItems.map(item => (
+          <NavItem key={item.id} item={item} active={view === item.id} onClick={() => setView(item.id)} collapsed={collapsed} overdueCount={item.id === 'inbox' ? overdueCount : 0}/>
+        ))}
+
+        {/* Folders section — tree in sidebar */}
+        {!collapsed && folders.length > 0 && (
+          <>
+            <div style={{ margin: '14px 6px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Folders</span>
+              <span onClick={() => setView('folders')} style={{ fontSize: 11, color: 'var(--accent)', cursor: 'pointer' }}>All</span>
+            </div>
+            <SidebarFolderTree entries={entries} view={view} setView={setView}/>
+          </>
+        )}
+        {collapsed && folders.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            {[...new Set(folders.map(f => f.split('/')[0]))].map(root => (
+              <NavItem key={root} item={{ id: `folder:${root}`, label: root, icon: 'folder' }}
+                active={view === `folder:${root}`} onClick={() => setView(`folder:${root}`)} collapsed={collapsed}/>
+            ))}
+          </div>
+        )}
+      </nav>
+
+      {/* Settings at bottom */}
+      <div style={{ padding: '8px 6px', borderTop: '1px solid var(--border)' }}>
+        <NavItem item={{ id: 'settings', label: 'Settings', icon: 'settings' }} active={view === 'settings'} onClick={() => setView('settings')} collapsed={collapsed}/>
+      </div>
+    </aside>
+  );
+};
+
+const NavItem = ({ item, active, onClick, collapsed, overdueCount }) => (
+  <div onClick={onClick} title={collapsed ? item.label : ''} style={{
+    display: 'flex', alignItems: 'center', gap: 9,
+    padding: collapsed ? '8px 0' : '7px 10px',
+    borderRadius: 7, cursor: 'pointer', marginBottom: 2,
+    background: active ? '#fff' : 'transparent',
+    color: active ? 'var(--text)' : 'var(--text2)',
+    fontWeight: active ? 500 : 400,
+    boxShadow: active ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
+    transition: 'all 0.12s',
+    justifyContent: collapsed ? 'center' : 'flex-start',
+    position: 'relative',
+  }}
+  onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg3)'; }}
+  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+  >
+    <Icon name={item.icon} size={15} color={active ? 'var(--accent)' : 'currentColor'}/>
+    {!collapsed && <span style={{ fontSize: 13, flex: 1 }}>{item.label}</span>}
+    {!collapsed && item.badge > 0 && (
+      <span style={{ fontSize: 10, fontWeight: 600, background: overdueCount > 0 ? 'var(--red)' : 'var(--bg3)', color: overdueCount > 0 ? '#fff' : 'var(--text3)', borderRadius: 99, padding: '0 6px', minWidth: 18, textAlign: 'center', lineHeight: 1.7 }}>{item.badge}</span>
+    )}
+    {collapsed && overdueCount > 0 && <span style={{ position: 'absolute', top: 6, right: 6, width: 7, height: 7, borderRadius: 99, background: 'var(--red)' }}/>}
+  </div>
+);
+
+// ── HOME VIEW ─────────────────────────────────────────────────────────────────
+const HomeView = ({ entries, onAdd, onSelect, activeTimer, onTimerToggle }) => {
+  const todayEntries = entries.filter(e => isToday(e.timestamp)).slice(0, 6);
+  const todayAction = entries.filter(e => e.actionDate === fmt(today) && !isToday(e.timestamp));
+  const overdue = entries.filter(e => isOverdue(e));
+
+  return (
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px 80px' }}>
+      {/* Date */}
+      <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text3)', marginBottom: 6, fontFamily: "'DM Mono', monospace" }}>
+        {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+      </p>
+      <h1 style={{ textAlign: 'center', fontSize: 26, fontWeight: 300, color: 'var(--text)', marginBottom: 32, letterSpacing: '-0.03em' }}>What's happening?</h1>
+
+      <JournalInput onAdd={onAdd}/>
+
+      {/* Today's summary pills */}
+      {todayEntries.length > 0 && (() => {
+        const todayTags = [...new Set(todayEntries.flatMap(e => e.tags))];
+        const todayFolders = [...new Set(todayEntries.filter(e => e.folder).map(e => e.folder))];
+        const todayEntities = [...new Set(todayEntries.filter(e => e.entity).map(e => e.entity))];
+        const hasAny = todayTags.length || todayFolders.length || todayEntities.length;
+        if (!hasAny) return null;
+        return (
+          <div style={{ maxWidth: 680, margin: '16px auto 0', display: 'flex', flexWrap: 'wrap', gap: 16, padding: '14px 18px', background: '#fff', borderRadius: 12, border: '1px solid var(--border)' }}>
+            {todayEntities.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Entities</span>
+                {todayEntities.map(e => <Chip key={e} icon="entity" label={e} small/>)}
+              </div>
+            )}
+            {todayFolders.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Folders</span>
+                {todayFolders.map(f => <Chip key={f} icon="folder" label={f} bg="var(--accent-light)" color="var(--accent)" small/>)}
+              </div>
+            )}
+            {todayTags.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Tags</span>
+                {todayTags.map(t => <Chip key={t} icon="tag" label={`#${t}`} small/>)}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Today's entries — timeline view */}
+      {todayEntries.length > 0 && (
+        <div style={{ marginTop: 40 }}>
+          <SectionHead title="Added today" count={todayEntries.length}/>
+          <TodayTimeline entries={todayEntries} onClick={onSelect} activeTimer={activeTimer} onTimerToggle={onTimerToggle}/>
+        </div>
+      )}
+
+      {/* Action today — styled like Needs Action */}
+      {todayAction.length > 0 && (
+        <div style={{ marginTop: 32, padding: 16, background: 'var(--amber-light)', borderRadius: 'var(--radius)', border: '1px solid var(--amber)' }}>
+          <SectionHead title="Action today" count={todayAction.length}/>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8 }}>
+            {todayAction.map(e => <EntryCard key={e.id} entry={e} onClick={onSelect} minimal timerActive={activeTimer?.entryId===e.id} onTimerToggle={onTimerToggle}/>)}
+          </div>
+        </div>
+      )}
+
+      {/* Needs action / overdue */}
+      {overdue.length > 0 && (
+        <div style={{ marginTop: 20, padding: 16, background: 'var(--red-light)', borderRadius: 'var(--radius)', border: '1px solid var(--red)' }}>
+          <SectionHead title="Needs action" count={overdue.length}/>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+            {[...overdue].sort((a, b) => a.actionDate > b.actionDate ? 1 : -1).map(e => (
+              <div key={e.id} style={{ minWidth: 260, maxWidth: 280, flexShrink: 0 }}>
+                <EntryCard entry={e} onClick={onSelect} overdue minimal timerActive={activeTimer?.entryId===e.id} onTimerToggle={onTimerToggle}/>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── INBOX VIEW ────────────────────────────────────────────────────────────────
+const InboxView = ({ entries, onSelect, onAddFolder, activeTimer, onTimerToggle }) => {
+  const noFolder = entries.filter(e => !e.folder && !isOverdue(e));
+  const overdue = entries.filter(e => isOverdue(e));
+  const withActionDate = entries.filter(e => e.folder && e.actionDate && !isOverdue(e));
+
+  return (
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em' }}>Inbox</h2>
+          <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 2 }}>Entries without a folder resurface weekly</p>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 600, background: overdue.length > 0 ? 'var(--red)' : 'var(--bg3)', color: overdue.length > 0 ? '#fff' : 'var(--text3)', borderRadius: 99, padding: '4px 12px' }}>
+          {overdue.length} overdue
+        </span>
+      </div>
+
+      {/* Overdue — horizontal scroll sorted by action date */}
+      {overdue.length > 0 && (
+        <div style={{ marginBottom: 28, padding: 16, background: 'var(--red-light)', borderRadius: var_radius(), border: '1px solid var(--red)' }}>
+          <SectionHead title="Needs action" count={overdue.length}/>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+            {[...overdue].sort((a, b) => a.actionDate > b.actionDate ? 1 : -1).map(e => (
+              <div key={e.id} style={{ minWidth: 260, maxWidth: 280, flexShrink: 0 }}>
+                <EntryCard entry={e} onClick={onSelect} overdue minimal timerActive={activeTimer?.entryId===e.id} onTimerToggle={onTimerToggle}/>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Upcoming action items — moved to second position */}
+      {withActionDate.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <SectionHead title="Upcoming" count={withActionDate.length}/>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {withActionDate.map(e => <EntryCard key={e.id} entry={e} onClick={onSelect} timerActive={activeTimer?.entryId===e.id} onTimerToggle={onTimerToggle}/>)}
+          </div>
+        </div>
+      )}
+
+      {/* No folder entries */}
+      {noFolder.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <SectionHead title="Unorganized" count={noFolder.length} action={{ label: 'Add folder', fn: () => {} }}/>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {noFolder.map(e => (
+              <div key={e.id} style={{ position: 'relative' }}>
+                <EntryCard entry={e} onClick={onSelect} timerActive={activeTimer?.entryId===e.id} onTimerToggle={onTimerToggle}/>
+                <button onClick={() => onAddFolder(e)} style={{
+                  position: 'absolute', right: 12, top: 12,
+                  background: 'var(--accent-light)', color: 'var(--accent)',
+                  border: 'none', borderRadius: 6, padding: '3px 9px',
+                  fontFamily: 'inherit', fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                }}>+ Folder</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── FOLDER VIEW ───────────────────────────────────────────────────────────────
+const FolderView = ({ folderName, entries, onSelect, activeTimer, onTimerToggle }) => {
+  const folderEntries = entries.filter(e => folderMatches(e.folder, folderName));
+  const totalIn = folderEntries.filter(e => e.amountType === 'inflow').reduce((s, e) => s + (e.amount || 0), 0);
+  const totalOut = folderEntries.filter(e => e.amountType === 'outflow').reduce((s, e) => s + (e.amount || 0), 0);
+
+  return (
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+          <Icon name="folder" size={18} color="var(--accent)"/>
+          <h2 style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em' }}><FolderChip path={folderName}/></h2>
+        </div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--green)' }}>+${totalIn.toLocaleString()}</span>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--red)' }}>−${totalOut.toLocaleString()}</span>
+          <span style={{ fontSize: 13, color: 'var(--text3)' }}>{folderEntries.length} entries</span>
+        </div>
+      </div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {folderEntries.length === 0 && <p style={{ color: 'var(--text3)', fontSize: 14 }}>No entries in this folder.</p>}
+        {folderEntries.map(e => <EntryCard key={e.id} entry={e} onClick={onSelect} overdue={isOverdue(e)} timerActive={activeTimer?.entryId===e.id} onTimerToggle={onTimerToggle}/>)}
+      </div>
+    </div>
+  );
+};
+
+// ── CALENDAR VIEW (WEEKLY) ────────────────────────────────────────────────────
+const CalendarView = ({ entries, onSelect }) => {
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  const getWeekDays = (offset) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - d.getDay() + 1 + offset * 7); // Monday
+    return Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(d);
+      day.setDate(d.getDate() + i);
+      return day;
+    });
+  };
+
+  const days = getWeekDays(weekOffset);
+  const weekStart = fmt(days[0]);
+  const weekEnd = fmt(days[6]);
+
+  const getEntriesForDay = (day) => {
+    const ds = fmt(day);
+    return entries.filter(e => e.timestamp.startsWith(ds) || e.actionDate === ds);
+  };
+
+  return (
+    <div style={{ padding: '40px 24px 80px', maxWidth: 960, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em' }}>Calendar</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 13, color: 'var(--text2)', fontFamily: "'DM Mono', monospace" }}>
+            {days[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — {days[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </span>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <NavBtn onClick={() => setWeekOffset(w => w - 1)}><Icon name="chevronLeft" size={14}/></NavBtn>
+            <NavBtn onClick={() => setWeekOffset(0)} style={{ fontSize: 11, padding: '4px 8px' }}>Today</NavBtn>
+            <NavBtn onClick={() => setWeekOffset(w => w + 1)}><Icon name="chevronRight" size={14}/></NavBtn>
+          </div>
+        </div>
+      </div>
+
+      {/* Day headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, marginBottom: 8 }}>
+        {days.map(day => {
+          const isT = fmt(day) === fmt(today);
+          return (
+            <div key={fmt(day)} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                {day.toLocaleDateString('en-US', { weekday: 'short' })}
+              </div>
+              <div style={{
+                width: 28, height: 28, borderRadius: 99, margin: '0 auto',
+                background: isT ? 'var(--accent)' : 'transparent',
+                color: isT ? '#fff' : 'var(--text)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, fontWeight: isT ? 600 : 400,
+              }}>{day.getDate()}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Day columns */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, alignItems: 'start' }}>
+        {days.map(day => {
+          const dayEntries = getEntriesForDay(day);
+          const isT = fmt(day) === fmt(today);
+          return (
+            <div key={fmt(day)} style={{
+              minHeight: 80, background: isT ? 'var(--accent-light)' : 'var(--bg2)',
+              borderRadius: var_radius(), padding: 8,
+              border: `1px solid ${isT ? 'var(--accent)' : 'var(--border)'}`,
+            }}>
+              {dayEntries.length === 0 && <div style={{ height: 40 }}/>}
+              {dayEntries.map(e => {
+                const amt = fmtAmt(e.amount, e.amountType);
+                const isAction = e.actionDate === fmt(day);
+                return (
+                  <div key={e.id} onClick={() => onSelect(e)} style={{
+                    background: '#fff', borderRadius: 6, padding: '5px 7px', marginBottom: 5,
+                    border: `1px solid ${isOverdue(e) ? 'var(--red)' : 'var(--border)'}`,
+                    cursor: 'pointer', fontSize: 11, lineHeight: 1.4,
+                  }}
+                  onMouseEnter={e2 => e2.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'}
+                  onMouseLeave={e2 => e2.currentTarget.style.boxShadow = 'none'}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
+                      <span style={{ color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{e.text.slice(0, 40)}{e.text.length > 40 ? '…' : ''}</span>
+                    </div>
+                    {amt && <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: amt.color, fontWeight: 500 }}>{amt.label}</span>}
+                    {isAction && !isOverdue(e) && <span style={{ fontSize: 10, color: 'var(--amber)', fontWeight: 500 }}>● action</span>}
+                    {isOverdue(e) && <span style={{ fontSize: 10, color: 'var(--red)', fontWeight: 500 }}>● overdue</span>}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const NavBtn = ({ onClick, children, style: s }) => (
+  <button onClick={onClick} style={{
+    background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 7,
+    padding: '5px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: 'var(--text2)', fontFamily: 'inherit', fontSize: 12, ...s,
+  }}>{children}</button>
+);
+
+// ── FULL ENTRY VIEW ───────────────────────────────────────────────────────────
+const EntryView = ({ entry, onBack, onUpdate, activeTimer, onTimerToggle }) => {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(entry.text);
+  const [folder, setFolder] = useState(entry.folder || '');
+  const [actionDate, setActionDate] = useState(entry.actionDate || '');
+  const amt = fmtAmt(entry.amount, entry.amountType);
+
+  const save = () => {
+    onUpdate({ ...entry, text, folder: folder || null, actionDate: actionDate || null });
+    setEditing(false);
+  };
+
+  return (
+    <div style={{ maxWidth: 680, margin: '0 auto', padding: '40px 24px 80px' }}>
+      {/* Back */}
+      <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text2)', fontFamily: 'inherit', fontSize: 13, marginBottom: 24, padding: 0 }}>
+        <Icon name="arrowLeft" size={15}/>Back
+      </button>
+
+      {/* Entry card */}
+      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
+        {/* Timestamp */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--text3)' }}>
+            {new Date(entry.timestamp).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} · {fmtTime(entry.timestamp)}
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => onTimerToggle && onTimerToggle(entry)} style={{ background: activeTimer?.entryId===entry.id ? 'var(--red-light)' : 'var(--bg2)', border: `1px solid ${activeTimer?.entryId===entry.id ? 'var(--red)' : 'var(--border)'}`, borderRadius: 7, padding: '5px 12px', cursor: 'pointer', display: 'flex', gap: 5, alignItems: 'center', fontFamily: 'inherit', fontSize: 12, color: activeTimer?.entryId===entry.id ? 'var(--red)' : 'var(--text2)', fontWeight: activeTimer?.entryId===entry.id ? 500 : 400 }}>
+              <Icon name={activeTimer?.entryId===entry.id ? 'pause' : 'stopwatch'} size={13} color="currentColor"/>
+              {activeTimer?.entryId===entry.id ? 'Stop timer' : 'Start timer'}
+            </button>
+            <button onClick={() => setEditing(!editing)} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 10px', cursor: 'pointer', display: 'flex', gap: 5, alignItems: 'center', fontFamily: 'inherit', fontSize: 12, color: 'var(--text2)' }}>
+              <Icon name="edit" size={13}/>Edit
+            </button>
+          </div>
+        </div>
+
+        {/* Text */}
+        {editing ? (
+          <textarea value={text} onChange={e => setText(e.target.value)} style={{ width: '100%', border: '1.5px solid var(--accent)', outline: 'none', borderRadius: 8, padding: '10px 12px', fontFamily: 'inherit', fontSize: 15, color: 'var(--text)', lineHeight: 1.55, resize: 'none', background: 'var(--bg)', marginBottom: 12 }} rows={4}/>
+        ) : (
+          <p style={{ fontSize: 16, lineHeight: 1.6, color: 'var(--text)', marginBottom: 20 }}>{entry.text}</p>
+        )}
+
+        {/* Fields grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FieldBlock label="Entity" icon="entity" value={entry.entity} color="var(--text2)"/>
+          <FieldBlock label="Amount" icon="amount" value={amt ? amt.label : null} color={amt ? amt.color : null} mono/>
+          <FieldBlock label="Folder" icon="folder" value={editing ? null : entry.folder} color="var(--accent)">
+            {editing && <input value={folder} onChange={e => setFolder(e.target.value)} placeholder="Add folder…" style={fieldInputStyle}/>}
+          </FieldBlock>
+          <FieldBlock label="Action date" icon="clock" value={editing ? null : (entry.actionDate ? fmtDate(entry.actionDate) : null)} color="var(--amber)">
+            {editing && <input type="date" value={actionDate} onChange={e => setActionDate(e.target.value)} style={fieldInputStyle}/>}
+          </FieldBlock>
+        </div>
+
+        {/* Tags */}
+        {entry.tags.length > 0 && (
+          <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            {entry.tags.map(t => <Chip key={t} icon="tag" label={`#${t}`}/>)}
+          </div>
+        )}
+
+        {editing && (
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+            <button onClick={() => setEditing(false)} style={{ ...secondaryBtn }}>Cancel</button>
+            <button onClick={save} style={{ ...primaryBtn }}>Save changes</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const fieldInputStyle = { border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', background: 'var(--bg)' };
+const primaryBtn = { background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer' };
+const secondaryBtn = { background: 'var(--bg2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 14px', fontFamily: 'inherit', fontSize: 13, cursor: 'pointer' };
+
+const FieldBlock = ({ label, icon, value, color, mono, children }) => (
+  <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '10px 12px' }}>
+    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5, display: 'flex', gap: 4, alignItems: 'center' }}>
+      <Icon name={icon} size={11} color="var(--text3)"/>{label}
+    </div>
+    {value ? (
+      <span style={{ fontSize: 14, fontWeight: 500, color: color || 'var(--text)', fontFamily: mono ? "'DM Mono', monospace" : 'inherit' }}>{value}</span>
+    ) : children || (
+      <span style={{ fontSize: 13, color: 'var(--text3)' }}>—</span>
+    )}
+  </div>
+);
+
+// ── FOLDER TREE NODE (recursive) ─────────────────────────────────────────────
+const FolderTreeNode = ({ node, entries, setView, onMove, depth = 0 }) => {
+  const [open, setOpen] = useState(depth < 2);
+  const [hover, setHover] = useState(false);
+  const [showMove, setShowMove] = useState(false);
+  const directCount = entries.filter(e => e.folder === node.path).length;
+  const totalCount = entries.filter(e => folderMatches(e.folder, node.path)).length;
+  const totalIn = entries.filter(e => folderMatches(e.folder, node.path) && e.amountType === 'inflow').reduce((s, e) => s + (e.amount || 0), 0);
+  const totalOut = entries.filter(e => folderMatches(e.folder, node.path) && e.amountType === 'outflow').reduce((s, e) => s + (e.amount || 0), 0);
+  const hasChildren = node.children.length > 0;
+
+  return (
+    <div style={{ marginLeft: depth > 0 ? 20 : 0 }}>
+      <div
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 14px', borderRadius: 10, marginBottom: 4,
+          background: hover ? '#fff' : 'transparent',
+          border: `1px solid ${hover ? 'var(--border)' : 'transparent'}`,
+          boxShadow: hover ? '0 1px 6px rgba(0,0,0,0.05)' : 'none',
+          transition: 'all 0.12s', cursor: 'pointer',
+        }}
+      >
+        {/* Expand toggle */}
+        <span onClick={() => hasChildren && setOpen(o => !o)} style={{ width: 16, display: 'flex', alignItems: 'center', color: 'var(--text3)', flexShrink: 0 }}>
+          {hasChildren ? <Icon name={open ? 'chevronDown' : 'chevronRight'} size={12}/> : <span style={{ width: 12 }}/>}
+        </span>
+        {/* Folder icon */}
+        <div style={{ width: 30, height: 30, background: 'var(--accent-light)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon name="folder" size={14} color="var(--accent)"/>
+        </div>
+        {/* Name + counts */}
+        <div style={{ flex: 1 }} onClick={() => setView(`folder:${node.path}`)}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{node.name}</div>
+          <div style={{ fontSize: 11, color: 'var(--text3)' }}>{totalCount} {totalCount === 1 ? 'entry' : 'entries'}{hasChildren ? ` · ${node.children.length} sub-folders` : ''}</div>
+        </div>
+        {/* Amounts */}
+        <div style={{ textAlign: 'right', display: hover ? 'none' : 'block' }}>
+          {totalIn > 0 && <div style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: 'var(--green)' }}>+${totalIn.toLocaleString()}</div>}
+          {totalOut > 0 && <div style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: 'var(--red)' }}>−${totalOut.toLocaleString()}</div>}
+        </div>
+        {/* Move button on hover */}
+        {hover && (
+          <button onClick={e => { e.stopPropagation(); setShowMove(true); }} style={{
+            background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6,
+            padding: '3px 10px', fontFamily: 'inherit', fontSize: 11, color: 'var(--text2)',
+            cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>Move</button>
+        )}
+      </div>
+
+      {/* Move modal */}
+      {showMove && <MoveFolderModal node={node} entries={entries} onMove={(dest) => { onMove(node.path, dest); setShowMove(false); }} onClose={() => setShowMove(false)}/>}
+
+      {/* Children */}
+      {open && hasChildren && (
+        <div style={{ borderLeft: '1px dashed var(--border)', marginLeft: 22, paddingLeft: 4 }}>
+          {node.children.map(child => (
+            <FolderTreeNode key={child.path} node={child} entries={entries} setView={setView} onMove={onMove} depth={depth + 1}/>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── MOVE FOLDER MODAL ─────────────────────────────────────────────────────────
+const MoveFolderModal = ({ node, entries, onMove, onClose }) => {
+  const allPaths = getAllFolderPaths(entries).filter(p => p !== node.path && !p.startsWith(node.path + '/'));
+  const [selected, setSelected] = useState('');
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 24, width: 360, boxShadow: '0 16px 48px rgba(0,0,0,0.15)' }}>
+        <h3 style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>Move "{node.name}"</h3>
+        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>Select destination folder or leave empty to make it a root folder.</p>
+        <div style={{ display: 'grid', gap: 6, maxHeight: 240, overflowY: 'auto', marginBottom: 16 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${selected === '' ? 'var(--accent)' : 'var(--border)'}`, background: selected === '' ? 'var(--accent-light)' : '#fff' }}>
+            <input type="radio" name="dest" value="" checked={selected === ''} onChange={() => setSelected('')} style={{ accentColor: 'var(--accent)' }}/>
+            <span style={{ fontSize: 13 }}>Root (no parent)</span>
+          </label>
+          {allPaths.map(p => (
+            <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${selected === p ? 'var(--accent)' : 'var(--border)'}`, background: selected === p ? 'var(--accent-light)' : '#fff' }}>
+              <input type="radio" name="dest" value={p} checked={selected === p} onChange={() => setSelected(p)} style={{ accentColor: 'var(--accent)' }}/>
+              <FolderChip path={p} small/>
+            </label>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 14px', fontFamily: 'inherit', fontSize: 13, cursor: 'pointer', color: 'var(--text2)' }}>Cancel</button>
+          <button onClick={() => onMove(selected)} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Move here</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── FOLDER NAV VIEW ───────────────────────────────────────────────────────────
+const FolderNavView = ({ entries, setView, onMoveFolder }) => {
+  const allPaths = getAllFolderPaths(entries);
+  const tree = buildFolderTree(allPaths);
+  return (
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
+      <h2 style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em', marginBottom: 4 }}>Folders</h2>
+      <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24 }}>Drag entries into folders, or use Move to reorganize. Click a folder to see its entries.</p>
+      {tree.length === 0 && <p style={{ color: 'var(--text3)', fontSize: 14 }}>No folders yet. Add /foldername to an entry to create one.</p>}
+      <div>
+        {tree.map(node => <FolderTreeNode key={node.path} node={node} entries={entries} setView={setView} onMove={onMoveFolder} depth={0}/>)}
+      </div>
+    </div>
+  );
+};
+
+// ── SEARCH VIEW ───────────────────────────────────────────────────────────────
+const SearchView = ({ entries, onSelect }) => {
+  const [query, setQuery] = useState('');
+  const [filterEntity, setFilterEntity] = useState('');
+  const [filterFolder, setFilterFolder] = useState('');
+  const [filterTag, setFilterTag] = useState('');
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo, setFilterTo] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const allEntities = [...new Set(entries.filter(e => e.entity).map(e => e.entity))].sort();
+  const allFolders = getAllFolderPaths(entries).sort();
+  const allTags = [...new Set(entries.flatMap(e => e.tags))].sort();
+
+  const results = entries.filter(e => {
+    if (query && !e.text.toLowerCase().includes(query.toLowerCase()) && !(e.entity || '').toLowerCase().includes(query.toLowerCase())) return false;
+    if (filterEntity && e.entity !== filterEntity) return false;
+    if (filterFolder && !folderMatches(e.folder, filterFolder)) return false;
+    if (filterTag && !e.tags.includes(filterTag)) return false;
+    if (filterFrom && e.timestamp.slice(0, 10) < filterFrom) return false;
+    if (filterTo && e.timestamp.slice(0, 10) > filterTo) return false;
+    return true;
+  });
+
+  const hasFilters = filterEntity || filterFolder || filterTag || filterFrom || filterTo;
+  const activeFilterCount = [filterEntity, filterFolder, filterTag, filterFrom, filterTo].filter(Boolean).length;
+
+  const clearAll = () => { setFilterEntity(''); setFilterFolder(''); setFilterTag(''); setFilterFrom(''); setFilterTo(''); };
+
+  const selectStyle = { flex: 1, border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 12, background: '#fff', color: 'var(--text)', outline: 'none' };
+  const inputStyle = { flex: 1, border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 12, background: '#fff', color: 'var(--text)', outline: 'none' };
+
+  return (
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
+      <h2 style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em', marginBottom: 20 }}>Search</h2>
+
+      {/* Search bar */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: '9px 14px' }}>
+          <Icon name="search" size={15} color="var(--text3)"/>
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search entries…" autoFocus
+            style={{ border: 'none', outline: 'none', flex: 1, fontFamily: 'inherit', fontSize: 14, background: 'transparent', color: 'var(--text)' }}/>
+          {query && <span onClick={() => setQuery('')} style={{ cursor: 'pointer', color: 'var(--text3)', fontSize: 16, lineHeight: 1 }}>×</span>}
+        </div>
+        <button onClick={() => setFiltersOpen(o => !o)} style={{
+          background: filtersOpen || hasFilters ? 'var(--accent-light)' : 'var(--bg2)',
+          border: `1px solid ${filtersOpen || hasFilters ? 'var(--accent)' : 'var(--border)'}`,
+          borderRadius: 10, padding: '9px 14px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
+          color: hasFilters ? 'var(--accent)' : 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          Filters {activeFilterCount > 0 && <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 99, width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{activeFilterCount}</span>}
+        </button>
+      </div>
+
+      {/* Filter panel */}
+      {filtersOpen && (
+        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Entity</label>
+            <select value={filterEntity} onChange={e => setFilterEntity(e.target.value)} style={selectStyle}>
+              <option value="">All entities</option>
+              {allEntities.map(e => <option key={e} value={e}>{e}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Folder</label>
+            <select value={filterFolder} onChange={e => setFilterFolder(e.target.value)} style={selectStyle}>
+              <option value="">All folders</option>
+              {allFolders.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Tag</label>
+            <select value={filterTag} onChange={e => setFilterTag(e.target.value)} style={selectStyle}>
+              <option value="">All tags</option>
+              {allTags.map(t => <option key={t} value={t}>#{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Date range</label>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} style={{ ...inputStyle, flex: 1 }}/>
+              <span style={{ fontSize: 11, color: 'var(--text3)' }}>to</span>
+              <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} style={{ ...inputStyle, flex: 1 }}/>
+            </div>
+          </div>
+          {hasFilters && (
+            <div style={{ gridColumn: '1/-1', display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={clearAll} style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Clear all filters</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Active filter chips */}
+      {hasFilters && !filtersOpen && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+          {filterEntity && <Chip label={filterEntity} icon="entity" bg="var(--bg3)" onRemove={() => setFilterEntity('')} small/>}
+          {filterFolder && <FolderChip path={filterFolder} small/>}
+          {filterTag && <Chip label={`#${filterTag}`} icon="tag" bg="var(--bg3)" onRemove={() => setFilterTag('')} small/>}
+          {filterFrom && <Chip label={`From ${filterFrom}`} icon="clock" bg="var(--amber-light)" color="var(--amber)" onRemove={() => setFilterFrom('')} small/>}
+          {filterTo && <Chip label={`To ${filterTo}`} icon="clock" bg="var(--amber-light)" color="var(--amber)" onRemove={() => setFilterTo('')} small/>}
+        </div>
+      )}
+
+      {/* Results */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <span style={{ fontSize: 12, color: 'var(--text3)' }}>{results.length} {results.length === 1 ? 'result' : 'results'}</span>
+        {(query || hasFilters) && <span style={{ fontSize: 12, color: 'var(--text3)' }}>sorted by date</span>}
+      </div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {results.length === 0 && <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text3)', fontSize: 14 }}>No entries match your search.</div>}
+        {[...results].sort((a, b) => b.timestamp > a.timestamp ? 1 : -1).map(e => <EntryCard key={e.id} entry={e} onClick={onSelect} overdue={isOverdue(e)}/>)}
+      </div>
+    </div>
+  );
+};
+
+// ── SETTINGS VIEW ────────────────────────────────────────────────────────────
+const SettingsView = ({ entries }) => {
+  const [tab, setTab] = useState('entities');
+
+  // Derive masters from entries
+  const allEntities = [...new Set(entries.filter(e => e.entity).map(e => e.entity))];
+  const allTags = [...new Set(entries.flatMap(e => e.tags))];
+  const allFolders = [...new Set(entries.filter(e => e.folder).map(e => e.folder))];
+
+  const [entities, setEntities] = useState(allEntities);
+  const [tags, setTags] = useState(allTags);
+  const [folders, setFolders] = useState(allFolders);
+  const [newVal, setNewVal] = useState('');
+  const [editId, setEditId] = useState(null);
+  const [editVal, setEditVal] = useState('');
+
+  const tabs = [
+    { id: 'entities', label: 'Entities', icon: 'entity', list: entities, setList: setEntities, placeholder: 'Add entity (e.g. Acme Corp)' },
+    { id: 'tags', label: 'Tags', icon: 'tag', list: tags, setList: setTags, placeholder: 'Add tag (e.g. invoice)' },
+    { id: 'folders', label: 'Folders', icon: 'folder', list: folders, setList: setFolders, placeholder: 'Add folder (e.g. Clients)' },
+  ];
+  const active = tabs.find(t => t.id === tab);
+
+  const addItem = () => {
+    const v = newVal.trim();
+    if (!v || active.list.includes(v)) return;
+    active.setList(prev => [...prev, v]);
+    setNewVal('');
+  };
+
+  const deleteItem = (item) => active.setList(prev => prev.filter(x => x !== item));
+
+  const saveEdit = (old) => {
+    const v = editVal.trim();
+    if (!v) return;
+    active.setList(prev => prev.map(x => x === old ? v : x));
+    setEditId(null); setEditVal('');
+  };
+
+  return (
+    <div style={{ maxWidth: 640, margin: '0 auto', padding: '40px 24px 80px' }}>
+      <h2 style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em', marginBottom: 4 }}>Settings</h2>
+      <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 28 }}>Manage master lists used across your journal entries.</p>
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--bg2)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => { setTab(t.id); setNewVal(''); setEditId(null); }} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
+            fontFamily: 'inherit', fontSize: 13, fontWeight: tab === t.id ? 500 : 400,
+            background: tab === t.id ? '#fff' : 'transparent',
+            color: tab === t.id ? 'var(--text)' : 'var(--text2)',
+            boxShadow: tab === t.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+            transition: 'all 0.15s',
+          }}>
+            <Icon name={t.icon} size={13} color={tab === t.id ? 'var(--accent)' : 'var(--text3)'}/>
+            {t.label}
+            <span style={{ fontSize: 11, fontWeight: 600, background: tab === t.id ? 'var(--accent-light)' : 'var(--bg3)', color: tab === t.id ? 'var(--accent)' : 'var(--text3)', borderRadius: 99, padding: '0 6px', lineHeight: 1.8 }}>{t.list.length}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Master list */}
+      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        {/* Add new */}
+        <div style={{ display: 'flex', gap: 8, padding: '12px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)' }}>
+          <input
+            value={newVal} onChange={e => setNewVal(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addItem()}
+            placeholder={active.placeholder}
+            style={{ flex: 1, border: '1px solid var(--border)', borderRadius: 7, padding: '7px 11px', fontFamily: 'inherit', fontSize: 13, outline: 'none', background: '#fff', color: 'var(--text)' }}
+          />
+          <button onClick={addItem} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, padding: '7px 14px', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            + Add
+          </button>
+        </div>
+
+        {/* List items */}
+        {active.list.length === 0 && (
+          <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>No {active.label.toLowerCase()} yet. Add one above.</div>
+        )}
+        {active.list.map((item, i) => (
+          <div key={item} style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px',
+            borderBottom: i < active.list.length - 1 ? '1px solid var(--border)' : 'none',
+          }}>
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Icon name={active.icon} size={13} color="var(--accent)"/>
+            </div>
+
+            {editId === item ? (
+              <>
+                <input autoFocus value={editVal} onChange={e => setEditVal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveEdit(item); if (e.key === 'Escape') setEditId(null); }}
+                  style={{ flex: 1, border: '1.5px solid var(--accent)', borderRadius: 6, padding: '4px 9px', fontFamily: 'inherit', fontSize: 13, outline: 'none' }}/>
+                <button onClick={() => saveEdit(item)} style={{ background: 'var(--green-light)', color: 'var(--green)', border: 'none', borderRadius: 6, padding: '4px 10px', fontFamily: 'inherit', fontSize: 12, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Icon name="check" size={12} color="var(--green)"/>Save
+                </button>
+                <button onClick={() => setEditId(null)} style={{ background: 'var(--bg2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+              </>
+            ) : (
+              <>
+                <span style={{ flex: 1, fontSize: 14, color: 'var(--text)' }}>
+                  {tab === 'tags' ? `#${item}` : item}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+                  {tab === 'entities' && `${entries.filter(e => e.entity === item).length} entries`}
+                  {tab === 'tags' && `${entries.filter(e => e.tags.includes(item)).length} entries`}
+                  {tab === 'folders' && `${entries.filter(e => e.folder === item).length} entries`}
+                </span>
+                <button onClick={() => { setEditId(item); setEditVal(item); }} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', fontFamily: 'inherit', fontSize: 12, color: 'var(--text2)', cursor: 'pointer' }}>Edit</button>
+                <button onClick={() => deleteItem(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', padding: 4, borderRadius: 6, display: 'flex' }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--red)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}>
+                  <Icon name="trash" size={14} color="currentColor"/>
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ── APP SHELL ─────────────────────────────────────────────────────────────────
+const App = () => {
+  const [entries, setEntries] = useState(() => {
+    try {
+      const s = localStorage.getItem('jp_entries');
+      if (s) {
+        const parsed = JSON.parse(s);
+        // Version check: if no entry has a sub-folder path, discard stale cache
+        const hasSubFolders = parsed.some(e => e.folder && e.folder.includes('/'));
+        if (hasSubFolders) return parsed;
+      }
+    } catch {}
+    localStorage.removeItem('jp_entries');
+    return SEED_ENTRIES;
+  });
+  const [view, setView] = useState(() => localStorage.getItem('jp_view') || 'home');
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [addFolderEntry, setAddFolderEntry] = useState(null);
+  const [folderInput, setFolderInput] = useState('');
+  const [activeTimer, setActiveTimer] = useState(null); // { entryId, startedAt, baseElapsed }
+
+  const handleTimerToggle = (entry) => {
+    if (activeTimer && activeTimer.entryId === entry.id) {
+      // Stop timer
+      setActiveTimer(null);
+    } else {
+      // Start new timer (stops any existing)
+      setActiveTimer({ entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 });
+    }
+  };
+
+  const handleTimerStop = () => setActiveTimer(null);
+
+  useEffect(() => { localStorage.setItem('jp_entries', JSON.stringify(entries)); }, [entries]);
+  useEffect(() => { localStorage.setItem('jp_view', view); }, [view]);
+
+  const addEntry = (entry) => setEntries(prev => [entry, ...prev]);
+  const updateEntry = (updated) => setEntries(prev => prev.map(e => e.id === updated.id ? updated : e));
+
+  // Move folder: rename all entries whose folder starts with oldPath
+  const moveFolder = (oldPath, destParent) => {
+    const oldName = oldPath.split('/').pop();
+    const newPath = destParent ? `${destParent}/${oldName}` : oldName;
+    setEntries(prev => prev.map(e => {
+      if (!e.folder) return e;
+      if (e.folder === oldPath) return { ...e, folder: newPath };
+      if (e.folder.startsWith(oldPath + '/')) return { ...e, folder: newPath + e.folder.slice(oldPath.length) };
+      return e;
+    }));
+  };
+
+  const handleAddFolder = (entry) => { setAddFolderEntry(entry); setFolderInput(''); };
+  const confirmFolder = () => {
+    if (folderInput.trim()) updateEntry({ ...addFolderEntry, folder: folderInput.trim() });
+    setAddFolderEntry(null);
+  };
+
+  // Tweaks
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.data?.type === '__activate_edit_mode') document.getElementById('tweaks-panel').classList.add('visible');
+      if (e.data?.type === '__deactivate_edit_mode') document.getElementById('tweaks-panel').classList.remove('visible');
+    };
+    window.addEventListener('message', handler);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    // Tweak controls
+    const sidebarEl = document.getElementById('tw-sidebar');
+    const fontsizeEl = document.getElementById('tw-fontsize');
+    if (sidebarEl) sidebarEl.addEventListener('change', e => setSidebarCollapsed(e.target.value === 'collapsed'));
+    if (fontsizeEl) fontsizeEl.addEventListener('input', e => { document.body.style.fontSize = e.target.value + 'px'; window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { fontSize: +e.target.value } }, '*'); });
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  // Determine active view content
+  const folderName = view.startsWith('folder:') ? view.split(':')[1] : null;
+
+  const renderView = () => {
+    if (selectedEntry) return <EntryView entry={selectedEntry} onBack={() => setSelectedEntry(null)} onUpdate={e => { updateEntry(e); setSelectedEntry(e); }} activeTimer={activeTimer} onTimerToggle={handleTimerToggle}/>;
+    if (view === 'home') return <HomeView entries={entries} onAdd={addEntry} onSelect={setSelectedEntry} activeTimer={activeTimer} onTimerToggle={handleTimerToggle}/>;
+    if (view === 'inbox') return <InboxView entries={entries} onSelect={setSelectedEntry} onAddFolder={handleAddFolder} activeTimer={activeTimer} onTimerToggle={handleTimerToggle}/>;
+    if (view === 'search') return <SearchView entries={entries} onSelect={setSelectedEntry}/>;
+    if (view === 'calendar') return <CalendarView entries={entries} onSelect={setSelectedEntry}/>;
+    if (view === 'folders') return <FolderNavView entries={entries} setView={setView} onMoveFolder={moveFolder}/>;
+    if (view === 'settings') return <SettingsView entries={entries}/>;
+    if (folderName) return <FolderView folderName={folderName} entries={entries} onSelect={setSelectedEntry} activeTimer={activeTimer} onTimerToggle={handleTimerToggle}/>;
+  };
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <Sidebar view={selectedEntry ? null : view} setView={(v) => { setSelectedEntry(null); setView(v); }} entries={entries} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed}/>
+      <main style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+        {renderView()}
+      </main>
+
+      {/* Floating timer */}
+      {activeTimer && (
+        <FloatingTimer
+          timer={activeTimer}
+          entry={entries.find(e => e.id === activeTimer.entryId)}
+          onStop={handleTimerStop}
+        />
+      )}
+
+      {/* Add folder modal */}
+      {addFolderEntry && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setAddFolderEntry(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 24, width: 340, boxShadow: '0 16px 48px rgba(0,0,0,0.15)' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 500, marginBottom: 6 }}>Add to folder</h3>
+            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16, lineHeight: 1.5 }}>{addFolderEntry.text.slice(0, 80)}…</p>
+            <input value={folderInput} onChange={e => setFolderInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && confirmFolder()} placeholder="Folder name (e.g. Clients)" style={{ ...fieldInputStyle, width: '100%', marginBottom: 14, padding: '8px 12px', fontSize: 14 }} autoFocus/>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setAddFolderEntry(null)} style={secondaryBtn}>Cancel</button>
+              <button onClick={confirmFolder} style={primaryBtn}>Add folder</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

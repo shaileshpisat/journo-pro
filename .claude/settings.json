@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.anthropic.com)",
+      "Read(//c/Users/sppis/.claude/projects/c--Work-Git-git-ace-journopro/f961adbd-f00a-4c47-a41a-ca7e7235acc6/tool-results//**)",
+      "Bash(gunzip -c /c/Users/sppis/.claude/projects/c--Work-Git-git-ace-journopro/f961adbd-f00a-4c47-a41a-ca7e7235acc6/tool-results/webfetch-1776602755853-8snmm6.bin)",
+      "Bash(tar -x -C /tmp/journopro_extract)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack --yes)",
+      "Bash(npx create-next-app@latest journopro-new --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack --yes)",
+      "Bash(cp -r /tmp/journopro-new/. /c/Work/Git/git-ace/journopro/ --exclude=JournoPro.html)",
+      "Bash(rsync -a --exclude='JournoPro.html' /tmp/journopro-new/ /c/Work/Git/git-ace/journopro/)",
+      "Bash(npm run *)",
+      "Bash(cp -r src/app app)",
+      "Bash(cp -r src/components components)",
+      "Bash(cp -r src/context context)",
+      "Bash(cp -r src/hooks hooks)",
+      "Bash(cp -r src/lib lib)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}
