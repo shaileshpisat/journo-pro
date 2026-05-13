@@ -22,6 +22,10 @@ export default function InboxView() {
     }
   }
 
+  const handleTaskToggle = (entry: Entry) => {
+    dispatch({ type: 'TOGGLE_TASK_DONE', payload: entry.id })
+  }
+
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
       <div
@@ -76,6 +80,7 @@ export default function InboxView() {
                     minimal
                     timerActive={activeTimer?.entryId === e.id}
                     onTimerToggle={handleTimerToggle}
+                    onTaskToggle={handleTaskToggle}
                   />
                 </div>
               ))}
@@ -95,6 +100,7 @@ export default function InboxView() {
                 onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
                 timerActive={activeTimer?.entryId === e.id}
                 onTimerToggle={handleTimerToggle}
+                onTaskToggle={handleTaskToggle}
               />
             ))}
           </div>
@@ -113,6 +119,7 @@ export default function InboxView() {
                   onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
                   timerActive={activeTimer?.entryId === e.id}
                   onTimerToggle={handleTimerToggle}
+                  onTaskToggle={handleTaskToggle}
                 />
                 <button
                   onClick={() => dispatch({ type: 'SET_ADD_FOLDER_ENTRY', payload: e })}

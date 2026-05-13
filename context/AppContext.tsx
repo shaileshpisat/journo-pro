@@ -60,6 +60,28 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'SET_ADD_FOLDER_ENTRY':
       return { ...state, addFolderEntry: action.payload }
+    case 'MARK_TASK':
+      return {
+        ...state,
+        entries: state.entries.map((e) =>
+          e.id === action.payload ? { ...e, isTask: true, isTaskDone: false } : e
+        ),
+        selectedEntry:
+          state.selectedEntry?.id === action.payload
+            ? { ...state.selectedEntry, isTask: true, isTaskDone: false }
+            : state.selectedEntry,
+      }
+    case 'TOGGLE_TASK_DONE':
+      return {
+        ...state,
+        entries: state.entries.map((e) =>
+          e.id === action.payload ? { ...e, isTaskDone: !e.isTaskDone } : e
+        ),
+        selectedEntry:
+          state.selectedEntry?.id === action.payload
+            ? { ...state.selectedEntry, isTaskDone: !state.selectedEntry.isTaskDone }
+            : state.selectedEntry,
+      }
     case 'MOVE_FOLDER': {
       const { oldPath, newPath } = action.payload
       return {

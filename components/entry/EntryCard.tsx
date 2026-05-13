@@ -15,6 +15,7 @@ interface EntryCardProps {
   minimal?: boolean
   timerActive?: boolean
   onTimerToggle?: (entry: Entry) => void
+  onTaskToggle?: (entry: Entry) => void
 }
 
 export default function EntryCard({
@@ -25,6 +26,7 @@ export default function EntryCard({
   minimal,
   timerActive,
   onTimerToggle,
+  onTaskToggle,
 }: EntryCardProps) {
   const [hovered, setHovered] = useState(false)
   const amt = fmtAmt(entry.amount, entry.amountType)
@@ -45,9 +47,37 @@ export default function EntryCard({
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <p style={{ fontSize: 13, color: 'var(--color-text)', lineHeight: 1.45, flex: 1, margin: 0 }}>
-          {entry.text}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flex: 1 }}>
+          {onTaskToggle && entry.isTask && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onTaskToggle(entry)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '1px 0 0 0',
+                color: entry.isTaskDone ? 'var(--color-accent)' : 'var(--color-text3)',
+                flexShrink: 0,
+              }}
+            >
+              <Icon name={entry.isTaskDone ? 'checkSquare' : 'square'} size={14} />
+            </button>
+          )}
+          <p
+            style={{
+              fontSize: 13,
+              color: entry.isTaskDone ? 'var(--color-text3)' : 'var(--color-text)',
+              lineHeight: 1.45,
+              margin: 0,
+              textDecoration: entry.isTaskDone ? 'line-through' : 'none',
+            }}
+          >
+            {entry.text}
+          </p>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           {!minimal && amt && (
             <span

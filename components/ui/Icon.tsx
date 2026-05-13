@@ -123,6 +123,15 @@ const PATHS: Record<string, React.ReactNode> = {
     </>
   ),
   play: <path d="M5 3l9 5-9 5V3z" fill="currentColor" />,
+  square: (
+    <rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
+  ),
+  checkSquare: (
+    <>
+      <rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="currentColor" />
+      <path d="M5 8.5L7.5 11L11 6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </>
+  ),
 }
 
 export default function Icon({ name, size = 16, color }: IconProps) {

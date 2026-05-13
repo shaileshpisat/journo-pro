@@ -284,6 +284,25 @@ export default function EntryDetail() {
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
+              onClick={() =>
+                entry.isTask
+                  ? dispatch({ type: 'TOGGLE_TASK_DONE', payload: entry.id })
+                  : dispatch({ type: 'MARK_TASK', payload: entry.id })
+              }
+              style={{
+                background: entry.isTask ? 'var(--color-accent-light)' : 'var(--color-bg2)',
+                border: `1px solid ${entry.isTask ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                borderRadius: 7, padding: '5px 12px', cursor: 'pointer',
+                display: 'flex', gap: 5, alignItems: 'center',
+                fontFamily: 'inherit', fontSize: 12,
+                color: entry.isTask ? 'var(--color-accent)' : 'var(--color-text2)',
+                fontWeight: entry.isTask ? 500 : 400,
+              }}
+            >
+              <Icon name={entry.isTaskDone ? 'checkSquare' : entry.isTask ? 'square' : 'square'} size={13} />
+              {entry.isTask ? (entry.isTaskDone ? 'Completed' : 'Mark done') : 'Mark as task'}
+            </button>
+            <button
               onClick={handleTimerToggle}
               style={{
                 background: timerActive ? 'var(--color-red-light)' : 'var(--color-bg2)',
@@ -326,7 +345,11 @@ export default function EntryDetail() {
             rows={4}
           />
         ) : (
-          <p style={{ fontSize: 16, lineHeight: 1.6, color: 'var(--color-text)', marginBottom: 20 }}>
+          <p style={{
+            fontSize: 16, lineHeight: 1.6, marginBottom: 20,
+            color: entry.isTaskDone ? 'var(--color-text3)' : 'var(--color-text)',
+            textDecoration: entry.isTaskDone ? 'line-through' : 'none',
+          }}>
             {entry.text}
           </p>
         )}

@@ -5,6 +5,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import HomeView from '@/components/views/HomeView'
 import InboxView from '@/components/views/InboxView'
 import SearchView from '@/components/views/SearchView'
+import TasksView from '@/components/views/TasksView'
 import CalendarView from '@/components/views/CalendarView'
 import FoldersView from '@/components/views/FoldersView'
 import FolderDetailView from '@/components/views/FolderDetailView'
@@ -22,6 +23,7 @@ export default function App() {
     if (view === 'home') return <HomeView />
     if (view === 'inbox') return <InboxView />
     if (view === 'search') return <SearchView />
+    if (view === 'tasks') return <TasksView />
     if (view === 'calendar') return <CalendarView />
     if (view === 'folders') return <FoldersView />
     if (view === 'settings') return <SettingsView />

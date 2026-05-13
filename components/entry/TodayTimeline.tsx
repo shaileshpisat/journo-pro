@@ -9,9 +9,10 @@ interface TodayTimelineProps {
   onClick: (entry: Entry) => void
   activeTimer?: TimerState | null
   onTimerToggle?: (entry: Entry) => void
+  onTaskToggle?: (entry: Entry) => void
 }
 
-export default function TodayTimeline({ entries, onClick, activeTimer, onTimerToggle }: TodayTimelineProps) {
+export default function TodayTimeline({ entries, onClick, activeTimer, onTimerToggle, onTaskToggle }: TodayTimelineProps) {
   const sorted = [...entries].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
   const byHour: Record<number, Entry[]> = {}
   sorted.forEach((e) => {
@@ -92,9 +93,35 @@ export default function TodayTimeline({ entries, onClick, activeTimer, onTimerTo
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                    <p style={{ fontSize: 13, color: 'var(--color-text)', lineHeight: 1.45, flex: 1, margin: 0 }}>
-                      {e.text}
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flex: 1 }}>
+                      {onTaskToggle && e.isTask && (
+                        <button
+                          onClick={(ev) => {
+                            ev.stopPropagation()
+                            onTaskToggle(e)
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '1px 0 0 0',
+                            color: e.isTaskDone ? 'var(--color-accent)' : 'var(--color-text3)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Icon name={e.isTaskDone ? 'checkSquare' : 'square'} size={13} />
+                        </button>
+                      )}
+                      <p style={{
+                        fontSize: 13,
+                        color: e.isTaskDone ? 'var(--color-text3)' : 'var(--color-text)',
+                        lineHeight: 1.45,
+                        margin: 0,
+                        textDecoration: e.isTaskDone ? 'line-through' : 'none',
+                      }}>
+                        {e.text}
+                      </p>
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                       {amt && (
                         <span

@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'inbox', label: 'Inbox', icon: 'inbox' },
   { id: 'search', label: 'Search', icon: 'search' },
+  { id: 'tasks', label: 'Tasks', icon: 'check' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar' },
 ]
 
@@ -21,6 +22,7 @@ export default function Sidebar() {
   const folders = getAllFolderPaths(entries)
   const inboxCount = entries.filter((e) => !e.folder).length
   const overdueCount = entries.filter((e) => isOverdue(e)).length
+  const tasksCount = entries.filter((e) => e.isTask && !e.isTaskDone).length
   const tree = buildFolderTree(entries)
   const rootFolders = [...new Set(folders.map((f) => f.split('/')[0]))]
 
@@ -87,7 +89,7 @@ export default function Sidebar() {
             key={item.id}
             item={{
               ...item,
-              badge: item.id === 'inbox' ? inboxCount : undefined,
+              badge: item.id === 'inbox' ? inboxCount : item.id === 'tasks' ? tasksCount : undefined,
             }}
             active={view === item.id}
             onClick={() => setView(item.id)}

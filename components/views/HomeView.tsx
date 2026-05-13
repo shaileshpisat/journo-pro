@@ -37,6 +37,10 @@ export default function HomeView() {
     }
   }
 
+  const handleTaskToggle = (entry: import('@/lib/types').Entry) => {
+    dispatch({ type: 'TOGGLE_TASK_DONE', payload: entry.id })
+  }
+
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px 80px' }}>
       <p
@@ -153,6 +157,7 @@ export default function HomeView() {
             onClick={(e) => dispatch({ type: 'SELECT_ENTRY', payload: e })}
             activeTimer={activeTimer}
             onTimerToggle={handleTimerToggle}
+            onTaskToggle={handleTaskToggle}
           />
         </div>
       )}
@@ -178,6 +183,7 @@ export default function HomeView() {
                 minimal
                 timerActive={activeTimer?.entryId === e.id}
                 onTimerToggle={handleTimerToggle}
+                onTaskToggle={handleTaskToggle}
               />
             ))}
           </div>
@@ -208,6 +214,7 @@ export default function HomeView() {
                     minimal
                     timerActive={activeTimer?.entryId === e.id}
                     onTimerToggle={handleTimerToggle}
+                    onTaskToggle={handleTaskToggle}
                   />
                 </div>
               ))}

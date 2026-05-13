@@ -9,6 +9,7 @@ export type ViewName =
   | 'home'
   | 'inbox'
   | 'search'
+  | 'tasks'
   | 'calendar'
   | 'folders'
   | 'settings'
@@ -25,6 +26,8 @@ export interface Entry {
   amountType: AmountType | null
   entity: string | null
   timeLogs: TimeLog[]
+  isTask: boolean
+  isTaskDone: boolean
 }
 
 export interface FolderNode {
@@ -60,3 +63,5 @@ export type Action =
   | { type: 'LOG_TIME'; payload: { entryId: number; log: TimeLog } }
   | { type: 'SET_ADD_FOLDER_ENTRY'; payload: Entry | null }
   | { type: 'MOVE_FOLDER'; payload: { oldPath: string; newPath: string } }
+  | { type: 'MARK_TASK'; payload: number }
+  | { type: 'TOGGLE_TASK_DONE'; payload: number }

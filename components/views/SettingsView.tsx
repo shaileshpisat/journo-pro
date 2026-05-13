@@ -66,7 +66,9 @@ export default function SettingsView() {
         folder: null,
         amount: 0,
         amountType: 'inflow',
-        timeLogs: []
+        timeLogs: [],
+        isTask: false,
+        isTaskDone: false,
       })
     } else if (tab === 'tags') {
       updatedEntries.push({
@@ -79,7 +81,9 @@ export default function SettingsView() {
         folder: null,
         amount: 0,
         amountType: 'inflow',
-        timeLogs: []
+        timeLogs: [],
+        isTask: false,
+        isTaskDone: false,
       })
     } else if (tab === 'folders') {
       updatedEntries.push({
@@ -92,7 +96,9 @@ export default function SettingsView() {
         folder: editVal,
         amount: 0,
         amountType: 'inflow',
-        timeLogs: []
+        timeLogs: [],
+        isTask: false,
+        isTaskDone: false,
       })
     }
 

@@ -32,6 +32,10 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
     }
   }
 
+  const handleTaskToggle = (entry: Entry) => {
+    dispatch({ type: 'TOGGLE_TASK_DONE', payload: entry.id })
+  }
+
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
       <div style={{ marginBottom: 28 }}>
@@ -69,6 +73,7 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
             overdue={isOverdue(e)}
             timerActive={activeTimer?.entryId === e.id}
             onTimerToggle={handleTimerToggle}
+            onTaskToggle={handleTaskToggle}
           />
         ))}
       </div>

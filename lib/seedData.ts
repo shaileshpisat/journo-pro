@@ -25,6 +25,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: 'inflow',
     entity: 'Acme Corp',
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
   {
     id: 2,
@@ -37,6 +39,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: 'outflow',
     entity: 'AWS',
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
   {
     id: 3,
@@ -49,6 +53,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: null,
     entity: 'Sarah',
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
   {
     id: 4,
@@ -61,6 +67,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: 'outflow',
     entity: 'Figma',
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
   {
     id: 5,
@@ -73,6 +81,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: 'inflow',
     entity: 'Beta Solutions',
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
   {
     id: 6,
@@ -85,6 +95,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: null,
     entity: 'Ravi',
     timeLogs: [],
+    isTask: true,
+    isTaskDone: false,
   },
   {
     id: 7,
@@ -97,6 +109,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: 'outflow',
     entity: null,
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
   {
     id: 8,
@@ -109,6 +123,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: 'inflow',
     entity: 'Gamma Inc',
     timeLogs: [],
+    isTask: true,
+    isTaskDone: false,
   },
   {
     id: 9,
@@ -121,6 +137,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: null,
     entity: 'TechParts Ltd',
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
   {
     id: 10,
@@ -133,6 +151,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: 'inflow',
     entity: 'Metro Agency',
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
   {
     id: 11,
@@ -145,6 +165,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: null,
     entity: null,
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
   {
     id: 12,
@@ -157,6 +179,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: null,
     entity: null,
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
   {
     id: 13,
@@ -169,6 +193,8 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: null,
     entity: null,
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
   {
     id: 14,
@@ -181,5 +207,7 @@ export const SEED_ENTRIES: Entry[] = [
     amountType: 'outflow',
     entity: 'IndiGo',
     timeLogs: [],
+    isTask: false,
+    isTaskDone: false,
   },
 ]

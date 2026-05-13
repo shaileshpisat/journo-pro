@@ -125,10 +125,15 @@ export default function CalendarView() {
                     onMouseEnter={(ev) => (ev.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
                     onMouseLeave={(ev) => (ev.currentTarget.style.boxShadow = 'none')}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
-                      <span style={{ color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4, alignItems: 'center' }}>
+                      <span style={{
+                        color: e.isTaskDone ? 'var(--color-text3)' : 'var(--color-text)',
+                        textDecoration: e.isTaskDone ? 'line-through' : 'none',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+                      }}>
                         {e.text.slice(0, 40)}{e.text.length > 40 ? '…' : ''}
                       </span>
+                      {e.isTaskDone && <Icon name="checkSquare" size={10} color="var(--color-accent)" />}
                     </div>
                     {amt && <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: amt.color, fontWeight: 500 }}>{amt.label}</span>}
                     {isAction && !overdue && <span style={{ fontSize: 10, color: 'var(--color-amber)', fontWeight: 500 }}>● action</span>}
