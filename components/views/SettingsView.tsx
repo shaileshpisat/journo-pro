@@ -69,6 +69,7 @@ export default function SettingsView() {
         timeLogs: [],
         isTask: false,
         isTaskDone: false,
+        archived: false,
       })
     } else if (tab === 'tags') {
       updatedEntries.push({
@@ -84,6 +85,7 @@ export default function SettingsView() {
         timeLogs: [],
         isTask: false,
         isTaskDone: false,
+        archived: false,
       })
     } else if (tab === 'folders') {
       updatedEntries.push({
@@ -99,6 +101,7 @@ export default function SettingsView() {
         timeLogs: [],
         isTask: false,
         isTaskDone: false,
+        archived: false,
       })
     }
 

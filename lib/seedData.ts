@@ -27,6 +27,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 2,
@@ -41,6 +42,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 3,
@@ -55,6 +57,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 4,
@@ -69,6 +72,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 5,
@@ -83,6 +87,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 6,
@@ -97,6 +102,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: true,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 7,
@@ -111,6 +117,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 8,
@@ -125,6 +132,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: true,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 9,
@@ -139,6 +147,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 10,
@@ -153,6 +162,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 11,
@@ -167,6 +177,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 12,
@@ -181,6 +192,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 13,
@@ -195,6 +207,7 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
   {
     id: 14,
@@ -209,5 +222,6 @@ export const SEED_ENTRIES: Entry[] = [
     timeLogs: [],
     isTask: false,
     isTaskDone: false,
+    archived: false,
   },
 ]

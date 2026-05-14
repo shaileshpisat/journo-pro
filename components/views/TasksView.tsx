@@ -11,7 +11,7 @@ export default function TasksView() {
   const { entries, activeTimer } = state
   const [query, setQuery] = useState('')
 
-  const tasks = entries.filter((e) => e.isTask)
+  const tasks = entries.filter((e) => e.isTask && !e.archived)
 
   const filtered = query
     ? tasks.filter((e) => e.text.toLowerCase().includes(query.toLowerCase()))

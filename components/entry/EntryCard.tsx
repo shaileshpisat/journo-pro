@@ -16,6 +16,7 @@ interface EntryCardProps {
   timerActive?: boolean
   onTimerToggle?: (entry: Entry) => void
   onTaskToggle?: (entry: Entry) => void
+  onArchive?: (entry: Entry) => void
 }
 
 export default function EntryCard({
@@ -27,6 +28,7 @@ export default function EntryCard({
   timerActive,
   onTimerToggle,
   onTaskToggle,
+  onArchive,
 }: EntryCardProps) {
   const [hovered, setHovered] = useState(false)
   const amt = fmtAmt(entry.amount, entry.amountType)
@@ -91,6 +93,27 @@ export default function EntryCard({
             >
               {amt.label}
             </span>
+          )}
+          {onArchive && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onArchive(entry)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '3px 4px',
+                color: hovered ? 'var(--color-text3)' : 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                borderRadius: 4,
+              }}
+              title={entry.archived ? 'Restore' : 'Archive'}
+            >
+              <Icon name="archive" size={13} />
+            </button>
           )}
           {onTimerToggle && (
             <button

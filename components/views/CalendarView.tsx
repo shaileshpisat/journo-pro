@@ -13,6 +13,7 @@ function fmt(d: Date): string {
 export default function CalendarView() {
   const { state, dispatch } = useAppState()
   const { entries } = state
+  const activeEntries = entries.filter((e) => !e.archived)
   const [weekOffset, setWeekOffset] = useState(0)
   const today = new Date()
 
@@ -30,11 +31,11 @@ export default function CalendarView() {
 
   const getEntriesForDay = (day: Date) => {
     const ds = fmt(day)
-    return entries.filter((e) => e.timestamp.startsWith(ds) || e.actionDate === ds)
+    return activeEntries.filter((e) => e.timestamp.startsWith(ds) || e.actionDate === ds)
   }
 
   return (
-    <div style={{ padding: '40px 24px 80px', maxWidth: 960, margin: '0 auto' }}>
+    <div style={{ padding: '40px clamp(12px, 2vw, 40px) 80px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <h2 style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em', margin: 0 }}>Calendar</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

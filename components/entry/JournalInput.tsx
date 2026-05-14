@@ -163,6 +163,7 @@ export default function JournalInput() {
       timeLogs: [],
       isTask: markTask,
       isTaskDone: false,
+      archived: false,
     }
     dispatch({ type: 'ADD_ENTRY', payload: entry })
     setText('')

@@ -105,6 +105,13 @@ const PATHS: Record<string, React.ReactNode> = {
       fill="none"
     />
   ),
+  archive: (
+    <>
+      <path d="M2 4L3 13C3 13.55 3.45 14 4 14H12C12.55 14 13 13.55 13 13L14 4H2Z" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinejoin="round" />
+      <path d="M2 4H14" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6 8H10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </>
+  ),
   check: (
     <path d="M3 8l4 4 6-7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
   ),

@@ -10,6 +10,7 @@ import CalendarView from '@/components/views/CalendarView'
 import FoldersView from '@/components/views/FoldersView'
 import FolderDetailView from '@/components/views/FolderDetailView'
 import SettingsView from '@/components/views/SettingsView'
+import ArchivesView from '@/components/views/ArchivesView'
 import EntryDetail from '@/components/entry/EntryDetail'
 import FloatingTimer from '@/components/FloatingTimer'
 import AddFolderModal from '@/components/modals/AddFolderModal'
@@ -27,6 +28,7 @@ export default function App() {
     if (view === 'calendar') return <CalendarView />
     if (view === 'folders') return <FoldersView />
     if (view === 'settings') return <SettingsView />
+    if (view === 'archive') return <ArchivesView />
     if (view.startsWith('folder:')) return <FolderDetailView folderName={view.slice(7)} />
     return <HomeView />
   }

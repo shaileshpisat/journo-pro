@@ -7,7 +7,8 @@ import FolderTreeNode from '@/components/layout/FolderTreeNode'
 export default function FoldersView() {
   const { state } = useAppState()
   const { entries } = state
-  const tree = buildFolderTree(entries)
+  const activeEntries = entries.filter((e) => !e.archived)
+  const tree = buildFolderTree(activeEntries)
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
@@ -22,7 +23,7 @@ export default function FoldersView() {
       )}
       <div>
         {tree.map((node) => (
-          <FolderTreeNode key={node.path} node={node} entries={entries} depth={0} variant="view" />
+          <FolderTreeNode key={node.path} node={node} entries={activeEntries} depth={0} variant="view" />
         ))}
       </div>
     </div>

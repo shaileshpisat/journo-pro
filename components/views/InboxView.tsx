@@ -10,9 +10,10 @@ export default function InboxView() {
   const { state, dispatch } = useAppState()
   const { entries, activeTimer } = state
 
-  const noFolder = entries.filter((e) => !e.folder && !isOverdue(e))
-  const overdue = entries.filter((e) => isOverdue(e))
-  const withActionDate = entries.filter((e) => e.folder && e.actionDate && !isOverdue(e))
+  const activeEntries = entries.filter((e) => !e.archived)
+  const noFolder = activeEntries.filter((e) => !e.folder && !isOverdue(e))
+  const overdue = activeEntries.filter((e) => isOverdue(e))
+  const withActionDate = activeEntries.filter((e) => e.folder && e.actionDate && !isOverdue(e))
 
   const handleTimerToggle = (entry: Entry) => {
     if (activeTimer?.entryId === entry.id) {

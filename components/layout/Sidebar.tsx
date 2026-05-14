@@ -13,17 +13,19 @@ const NAV_ITEMS = [
   { id: 'search', label: 'Search', icon: 'search' },
   { id: 'tasks', label: 'Tasks', icon: 'check' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar' },
+  { id: 'archive', label: 'Archives', icon: 'archive' },
 ]
 
 export default function Sidebar() {
   const { state, dispatch } = useAppState()
   const { entries, view, sidebarCollapsed: collapsed } = state
 
-  const folders = getAllFolderPaths(entries)
-  const inboxCount = entries.filter((e) => !e.folder).length
-  const overdueCount = entries.filter((e) => isOverdue(e)).length
-  const tasksCount = entries.filter((e) => e.isTask && !e.isTaskDone).length
-  const tree = buildFolderTree(entries)
+  const activeEntries = entries.filter((e) => !e.archived)
+  const folders = getAllFolderPaths(activeEntries)
+  const inboxCount = activeEntries.filter((e) => !e.folder).length
+  const overdueCount = activeEntries.filter((e) => isOverdue(e)).length
+  const tasksCount = activeEntries.filter((e) => e.isTask && !e.isTaskDone).length
+  const tree = buildFolderTree(activeEntries)
   const rootFolders = [...new Set(folders.map((f) => f.split('/')[0]))]
 
   const setView = (v: string) => {
@@ -131,7 +133,7 @@ export default function Sidebar() {
               <FolderTreeNode
                 key={node.path}
                 node={node}
-                entries={entries}
+                entries={activeEntries}
                 depth={0}
                 variant="sidebar"
               />

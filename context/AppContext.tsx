@@ -95,6 +95,28 @@ function reducer(state: AppState, action: Action): AppState {
         }),
       }
     }
+    case 'ARCHIVE_ENTRY':
+      return {
+        ...state,
+        entries: state.entries.map((e) =>
+          e.id === action.payload ? { ...e, archived: true } : e
+        ),
+        selectedEntry:
+          state.selectedEntry?.id === action.payload
+            ? { ...state.selectedEntry, archived: true }
+            : state.selectedEntry,
+      }
+    case 'RESTORE_ENTRY':
+      return {
+        ...state,
+        entries: state.entries.map((e) =>
+          e.id === action.payload ? { ...e, archived: false } : e
+        ),
+        selectedEntry:
+          state.selectedEntry?.id === action.payload
+            ? { ...state.selectedEntry, archived: false }
+            : state.selectedEntry,
+      }
     default:
       return state
   }

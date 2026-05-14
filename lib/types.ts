@@ -3,6 +3,7 @@ export type AmountType = 'inflow' | 'outflow'
 export interface TimeLog {
   startedAt: number
   duration: number
+  description?: string
 }
 
 export type ViewName =
@@ -13,6 +14,7 @@ export type ViewName =
   | 'calendar'
   | 'folders'
   | 'settings'
+  | 'archive'
   | `folder:${string}`
 
 export interface Entry {
@@ -28,6 +30,7 @@ export interface Entry {
   timeLogs: TimeLog[]
   isTask: boolean
   isTaskDone: boolean
+  archived: boolean
 }
 
 export interface FolderNode {
@@ -65,3 +68,5 @@ export type Action =
   | { type: 'MOVE_FOLDER'; payload: { oldPath: string; newPath: string } }
   | { type: 'MARK_TASK'; payload: number }
   | { type: 'TOGGLE_TASK_DONE'; payload: number }
+  | { type: 'ARCHIVE_ENTRY'; payload: number }
+  | { type: 'RESTORE_ENTRY'; payload: number }

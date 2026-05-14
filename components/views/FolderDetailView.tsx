@@ -16,7 +16,8 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
   const { state, dispatch } = useAppState()
   const { entries, activeTimer } = state
 
-  const folderEntries = entries.filter((e) => folderMatches(e.folder, folderName))
+  const activeEntries = entries.filter((e) => !e.archived)
+  const folderEntries = activeEntries.filter((e) => folderMatches(e.folder, folderName))
   const totalIn = folderEntries
     .filter((e) => e.amountType === 'inflow')
     .reduce((s, e) => s + (e.amount || 0), 0)

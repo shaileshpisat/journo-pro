@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAppState } from '@/context/AppContext'
+import { getAllFolderPaths } from '@/lib/folderUtils'
 
 export default function AddFolderModal() {
   const { state, dispatch } = useAppState()
@@ -9,12 +10,42 @@ export default function AddFolderModal() {
   if (!entry) return null
 
   const [folderInput, setFolderInput] = useState('')
+  const [selectedIndex, setSelectedIndex] = useState(-1)
 
-  const confirm = () => {
-    if (folderInput.trim()) {
-      dispatch({ type: 'UPDATE_ENTRY', payload: { ...entry, folder: folderInput.trim() } })
+  const existingFolders = useMemo(() => getAllFolderPaths(state.entries), [state.entries])
+
+  const suggestions = useMemo(() => {
+    if (!folderInput.trim()) return []
+    const q = folderInput.trim().toLowerCase()
+    return existingFolders.filter((f) => f.toLowerCase().includes(q))
+  }, [existingFolders, folderInput])
+
+  const confirm = (folder?: string) => {
+    const name = folder ?? folderInput.trim()
+    if (name) {
+      dispatch({ type: 'UPDATE_ENTRY', payload: { ...entry, folder: name, text: `Folder ${name} is created` } })
     }
     dispatch({ type: 'SET_ADD_FOLDER_ENTRY', payload: null })
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (suggestions.length > 0 && selectedIndex >= 0) {
+        confirm(suggestions[selectedIndex])
+      } else {
+        confirm()
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1))
+    } else if (e.key === 'Escape') {
+      setFolderInput('')
+      setSelectedIndex(-1)
+    }
   }
 
   return (
@@ -52,26 +83,68 @@ export default function AddFolderModal() {
           {entry.text.slice(0, 80)}
           {entry.text.length > 80 ? '…' : ''}
         </p>
-        <input
-          value={folderInput}
-          onChange={(e) => setFolderInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && confirm()}
-          placeholder="Folder name (e.g. Clients)"
-          autoFocus
-          style={{
-            border: '1px solid var(--color-border)',
-            borderRadius: 6,
-            padding: '8px 12px',
-            fontFamily: 'inherit',
-            fontSize: 14,
-            outline: 'none',
-            width: '100%',
-            marginBottom: 14,
-            background: 'var(--color-bg)',
-            boxSizing: 'border-box',
-          }}
-        />
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div style={{ position: 'relative' }}>
+          <input
+            value={folderInput}
+            onChange={(e) => {
+              setFolderInput(e.target.value)
+              setSelectedIndex(-1)
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="Folder name (e.g. Clients)"
+            autoFocus
+            style={{
+              border: '1px solid var(--color-border)',
+              borderRadius: 6,
+              padding: '8px 12px',
+              fontFamily: 'inherit',
+              fontSize: 14,
+              outline: 'none',
+              width: '100%',
+              marginBottom: 4,
+              background: 'var(--color-bg)',
+              boxSizing: 'border-box',
+            }}
+          />
+          {suggestions.length > 0 && (
+            <ul
+              style={{
+                listStyle: 'none',
+                margin: 0,
+                padding: '4px 0',
+                border: '1px solid var(--color-border)',
+                borderRadius: 6,
+                background: '#fff',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                maxHeight: 180,
+                overflowY: 'auto',
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                zIndex: 10,
+              }}
+            >
+              {suggestions.map((folder, i) => (
+                <li
+                  key={folder}
+                  onClick={() => confirm(folder)}
+                  onMouseEnter={() => setSelectedIndex(i)}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    background: i === selectedIndex ? 'var(--color-bg2)' : 'transparent',
+                    color: 'var(--color-text)',
+                  }}
+                >
+                  {folder}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
           <button
             onClick={() => dispatch({ type: 'SET_ADD_FOLDER_ENTRY', payload: null })}
             style={{
@@ -88,7 +161,7 @@ export default function AddFolderModal() {
             Cancel
           </button>
           <button
-            onClick={confirm}
+            onClick={() => confirm()}
             style={{
               background: 'var(--color-accent)',
               color: '#fff',

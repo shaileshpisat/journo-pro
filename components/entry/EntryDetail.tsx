@@ -276,33 +276,44 @@ export default function EntryDetail() {
       </button>
 
       <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--color-text3)' }}>
             {new Date(entry.timestamp).toLocaleDateString('en-US', {
               weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
             })}{' '}· {fmtTime(entry.timestamp)}
           </span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={() =>
-                entry.isTask
-                  ? dispatch({ type: 'TOGGLE_TASK_DONE', payload: entry.id })
-                  : dispatch({ type: 'MARK_TASK', payload: entry.id })
-              }
-              style={{
-                background: entry.isTask ? 'var(--color-accent-light)' : 'var(--color-bg2)',
-                border: `1px solid ${entry.isTask ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                borderRadius: 7, padding: '5px 12px', cursor: 'pointer',
-                display: 'flex', gap: 5, alignItems: 'center',
-                fontFamily: 'inherit', fontSize: 12,
-                color: entry.isTask ? 'var(--color-accent)' : 'var(--color-text2)',
-                fontWeight: entry.isTask ? 500 : 400,
-              }}
-            >
-              <Icon name={entry.isTaskDone ? 'checkSquare' : entry.isTask ? 'square' : 'square'} size={13} />
-              {entry.isTask ? (entry.isTaskDone ? 'Completed' : 'Mark done') : 'Mark as task'}
-            </button>
-            <button
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', justifyContent: 'flex-end' }}>
+          <div
+            onClick={() =>
+              entry.isTask
+                ? dispatch({ type: 'TOGGLE_TASK_DONE', payload: entry.id })
+                : dispatch({ type: 'MARK_TASK', payload: entry.id })
+            }
+            style={{
+              width: 36, height: 20, borderRadius: 99,
+              background: entry.isTask ? 'var(--color-accent)' : 'var(--color-bg3)',
+              cursor: 'pointer', position: 'relative', transition: 'background 0.15s', flexShrink: 0,
+            }}
+          >
+            <div style={{
+              width: 16, height: 16, borderRadius: 99, background: '#fff',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              position: 'absolute', top: 2,
+              left: entry.isTask ? 18 : 2,
+              transition: 'left 0.15s',
+            }} />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)' }}>
+            Task
+          </span>
+          {entry.isTaskDone && (
+            <span style={{ fontSize: 11, color: 'var(--color-accent)', fontWeight: 500, marginLeft: 2 }}>
+              Completed
+            </span>
+          )}
+          <button
               onClick={handleTimerToggle}
               style={{
                 background: timerActive ? 'var(--color-red-light)' : 'var(--color-bg2)',
@@ -329,8 +340,25 @@ export default function EntryDetail() {
               <Icon name="edit" size={13} />
               Edit
             </button>
+            <button
+              onClick={() =>
+                entry.archived
+                  ? dispatch({ type: 'RESTORE_ENTRY', payload: entry.id })
+                  : dispatch({ type: 'ARCHIVE_ENTRY', payload: entry.id })
+              }
+              style={{
+                background: entry.archived ? 'var(--color-accent-light)' : 'var(--color-bg2)',
+                border: `1px solid ${entry.archived ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                borderRadius: 7, padding: '5px 10px', cursor: 'pointer',
+                display: 'flex', gap: 5, alignItems: 'center',
+                fontFamily: 'inherit', fontSize: 12,
+                color: entry.archived ? 'var(--color-accent)' : 'var(--color-text2)',
+              }}
+            >
+              <Icon name="archive" size={13} />
+              {entry.archived ? 'Restore' : 'Archive'}
+            </button>
           </div>
-        </div>
 
         {editing ? (
           <textarea
@@ -431,15 +459,22 @@ export default function EntryDetail() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {entry.timeLogs.map((log, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', background: 'var(--color-bg2)', borderRadius: 6 }}>
-                  <span style={{ fontSize: 12, color: 'var(--color-text2)' }}>
-                    {new Date(log.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    {' · '}
-                    {new Date(log.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                  </span>
-                  <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--color-text)', fontWeight: 500 }}>
-                    {fmtDuration(log.duration)}
-                  </span>
+                <div key={i} style={{ padding: '5px 8px', background: 'var(--color-bg2)', borderRadius: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: 'var(--color-text2)' }}>
+                      {new Date(log.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {' · '}
+                      {new Date(log.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                    </span>
+                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--color-text)', fontWeight: 500 }}>
+                      {fmtDuration(log.duration)}
+                    </span>
+                  </div>
+                  {log.description && (
+                    <div style={{ fontSize: 11, color: 'var(--color-text3)', marginTop: 3, lineHeight: 1.4 }}>
+                      {log.description}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

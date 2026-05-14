@@ -13,6 +13,8 @@ export default function SearchView() {
   const { state, dispatch } = useAppState()
   const { entries } = state
 
+  const activeEntries = entries.filter((e) => !e.archived)
+
   const [query, setQuery] = useState('')
   const [filterEntity, setFilterEntity] = useState('')
   const [filterFolder, setFilterFolder] = useState('')
@@ -21,11 +23,11 @@ export default function SearchView() {
   const [filterTo, setFilterTo] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
 
-  const allEntities = [...new Set(entries.filter((e) => e.entity).map((e) => e.entity!))].sort()
-  const allFolders = getAllFolderPaths(entries).sort()
-  const allTags = [...new Set(entries.flatMap((e) => e.tags))].sort()
+  const allEntities = [...new Set(activeEntries.filter((e) => e.entity).map((e) => e.entity!))].sort()
+  const allFolders = getAllFolderPaths(activeEntries).sort()
+  const allTags = [...new Set(activeEntries.flatMap((e) => e.tags))].sort()
 
-  const results = entries.filter((e) => {
+  const results = activeEntries.filter((e) => {
     if (query && !e.text.toLowerCase().includes(query.toLowerCase()) && !(e.entity || '').toLowerCase().includes(query.toLowerCase())) return false
     if (filterEntity && e.entity !== filterEntity) return false
     if (filterFolder && !folderMatches(e.folder, filterFolder)) return false

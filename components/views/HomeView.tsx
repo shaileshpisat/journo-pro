@@ -18,11 +18,12 @@ export default function HomeView() {
   const { state, dispatch } = useAppState()
   const { entries, activeTimer } = state
 
-  const todayEntries = entries.filter((e) => isToday(e.timestamp)).slice(0, 6)
-  const todayAction = entries.filter(
+  const activeEntries = entries.filter((e) => !e.archived)
+  const todayEntries = activeEntries.filter((e) => isToday(e.timestamp)).slice(0, 6)
+  const todayAction = activeEntries.filter(
     (e) => e.actionDate === todayStr() && !isToday(e.timestamp)
   )
-  const overdue = entries.filter((e) => isOverdue(e))
+  const overdue = activeEntries.filter((e) => isOverdue(e))
 
   const todayTags = [...new Set(todayEntries.flatMap((e) => e.tags))]
   const todayFolders = [...new Set(todayEntries.filter((e) => e.folder).map((e) => e.folder!))]
