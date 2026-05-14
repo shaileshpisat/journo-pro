@@ -1,18 +1,83 @@
-import { Entry, TimerState } from '@/lib/types'
+import { Entry, TimerState, EntryHistory } from '@/lib/types'
 import { fmtTime, fmtAmt } from '@/lib/formatters'
 import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
 import Icon from '@/components/ui/Icon'
 
+export interface HistoryRowData {
+  history: EntryHistory
+  entryText: string
+  timestamp: number
+}
+
 interface TodayTimelineProps {
   entries: Entry[]
+  historyItems?: HistoryRowData[]
   onClick: (entry: Entry) => void
   activeTimer?: TimerState | null
   onTimerToggle?: (entry: Entry) => void
   onTaskToggle?: (entry: Entry) => void
 }
 
-export default function TodayTimeline({ entries, onClick, activeTimer, onTimerToggle, onTaskToggle }: TodayTimelineProps) {
+function fmtHistField(field: string): string {
+  const map: Record<string, string> = {
+    text: 'Text',
+    folder: 'Folder',
+    actionDate: 'Action date',
+    entity: 'Entity',
+    amount: 'Amount',
+    amountType: 'Type',
+    tags: 'Tags',
+    isTask: 'Task',
+    isTaskDone: 'Done',
+    archived: 'Archive',
+  }
+  return map[field] || field
+}
+
+function fmtHistValue(field: string, val: unknown): string {
+  if (val === null || val === undefined) return '—'
+  if (field === 'amount') return `$${Number(val).toLocaleString()}`
+  if (field === 'amountType') return val as string
+  if (field === 'isTask') return val ? 'yes' : 'no'
+  if (field === 'isTaskDone') return val ? 'done' : 'undone'
+  if (field === 'archived') return val ? 'archived' : 'restored'
+  if (field === 'actionDate') return val as string
+  if (Array.isArray(val)) return `[${(val as string[]).join(', ')}]`
+  return String(val).slice(0, 50)
+}
+
+function HistoryRow({ history, entryText }: { history: EntryHistory; entryText: string }) {
+  return (
+    <div style={{
+      background: 'transparent',
+      borderRadius: 8,
+      padding: '6px 13px',
+      marginBottom: 6,
+      fontSize: 12,
+      lineHeight: 1.4,
+      border: '1px dashed var(--color-border)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+        <Icon name="edit" size={11} color="var(--color-text3)" />
+        <span style={{ fontWeight: 500, color: 'var(--color-text)' }}>
+          {fmtHistField(history.field)}
+        </span>
+        <span style={{ color: 'var(--color-text3)' }}>·</span>
+        <span style={{ color: 'var(--color-text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+          {entryText.slice(0, 40)}{entryText.length > 40 ? '…' : ''}
+        </span>
+      </div>
+      <div style={{ color: 'var(--color-text3)', fontSize: 11, fontFamily: "'DM Mono', monospace", paddingLeft: 17 }}>
+        {fmtHistValue(history.field, history.oldValue)}
+        <span style={{ margin: '0 4px', color: 'var(--color-accent)' }}>→</span>
+        {fmtHistValue(history.field, history.newValue)}
+      </div>
+    </div>
+  )
+}
+
+export default function TodayTimeline({ entries, historyItems, onClick, activeTimer, onTimerToggle, onTaskToggle }: TodayTimelineProps) {
   const sorted = [...entries].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
   const byHour: Record<number, Entry[]> = {}
   sorted.forEach((e) => {
@@ -20,9 +85,20 @@ export default function TodayTimeline({ entries, onClick, activeTimer, onTimerTo
     if (!byHour[h]) byHour[h] = []
     byHour[h].push(e)
   })
-  const hours = Object.keys(byHour)
-    .map(Number)
-    .sort((a, b) => a - b)
+
+  const histByHour: Record<number, HistoryRowData[]> = {}
+  if (historyItems) {
+    const sortedHist = [...historyItems].sort((a, b) => a.timestamp - b.timestamp)
+    sortedHist.forEach((item) => {
+      const h = new Date(item.timestamp).getHours()
+      if (!histByHour[h]) histByHour[h] = []
+      histByHour[h].push(item)
+    })
+  }
+
+  const allHours = new Set([...Object.keys(byHour).map(Number), ...Object.keys(histByHour).map(Number)])
+  const hours = [...allHours].sort((a, b) => a - b)
+
   const fmtHour = (h: number) => {
     const ampm = h >= 12 ? 'PM' : 'AM'
     const h12 = h % 12 === 0 ? 12 : h % 12
@@ -67,7 +143,7 @@ export default function TodayTimeline({ entries, onClick, activeTimer, onTimerTo
             />
           </div>
           <div style={{ flex: 1, paddingBottom: 14 }}>
-            {byHour[h].map((e) => {
+            {byHour[h]?.map((e) => {
               const amt = fmtAmt(e.amount, e.amountType)
               const isActive = activeTimer?.entryId === e.id
               return (
@@ -179,6 +255,9 @@ export default function TodayTimeline({ entries, onClick, activeTimer, onTimerTo
                 </div>
               )
             })}
+            {histByHour[h]?.map((item, i) => (
+              <HistoryRow key={`h-${i}`} history={item.history} entryText={item.entryText} />
+            ))}
           </div>
         </div>
       ))}

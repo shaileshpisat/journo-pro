@@ -3,76 +3,17 @@
 import { useMemo } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { isToday, isOverdue } from '@/lib/predicates'
-import { fmtTime, fmtAmt } from '@/lib/formatters'
+import { fmtAmt } from '@/lib/formatters'
 import { EntryHistory } from '@/lib/types'
 import JournalInput from '@/components/entry/JournalInput'
 import EntryCard from '@/components/entry/EntryCard'
 import TodayTimeline from '@/components/entry/TodayTimeline'
-import SectionHead from '@/components/ui/SectionHead'
 import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
-import Icon from '@/components/ui/Icon'
+import SectionHead from '@/components/ui/SectionHead'
 
 function todayStr() {
   return new Date().toISOString().split('T')[0]
-}
-
-function fmtHistField(field: string): string {
-  const map: Record<string, string> = {
-    text: 'Text',
-    folder: 'Folder',
-    actionDate: 'Action date',
-    entity: 'Entity',
-    amount: 'Amount',
-    amountType: 'Type',
-    tags: 'Tags',
-    isTask: 'Task',
-    isTaskDone: 'Done',
-    archived: 'Archive',
-  }
-  return map[field] || field
-}
-
-function fmtHistValue(field: string, val: unknown): string {
-  if (val === null || val === undefined) return '—'
-  if (field === 'amount') return `$${Number(val).toLocaleString()}`
-  if (field === 'amountType') return val as string
-  if (field === 'isTask') return val ? 'yes' : 'no'
-  if (field === 'isTaskDone') return val ? 'done' : 'undone'
-  if (field === 'archived') return val ? 'archived' : 'restored'
-  if (field === 'actionDate') return val as string
-  if (Array.isArray(val)) return `[${(val as string[]).join(', ')}]`
-  return String(val).slice(0, 50)
-}
-
-function HistoryRow({ history, entryText }: { history: EntryHistory; entryText: string }) {
-  return (
-    <div style={{
-      background: '#fff',
-      border: '1px solid var(--color-border)',
-      borderRadius: 8,
-      padding: '8px 13px',
-      marginBottom: 6,
-      fontSize: 12,
-      lineHeight: 1.4,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-        <Icon name="edit" size={11} color="var(--color-text3)" />
-        <span style={{ fontWeight: 500, color: 'var(--color-text)' }}>
-          {fmtHistField(history.field)}
-        </span>
-        <span style={{ color: 'var(--color-text3)' }}>·</span>
-        <span style={{ color: 'var(--color-text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-          {entryText.slice(0, 40)}{entryText.length > 40 ? '…' : ''}
-        </span>
-      </div>
-      <div style={{ color: 'var(--color-text3)', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
-        {fmtHistValue(history.field, history.oldValue)}
-        <span style={{ margin: '0 4px', color: 'var(--color-accent)' }}>→</span>
-        {fmtHistValue(history.field, history.newValue)}
-      </div>
-    </div>
-  )
 }
 
 export default function HomeView() {
@@ -225,40 +166,39 @@ export default function HomeView() {
       )}
 
       {/* Today timeline */}
-      {todayEntries.length > 0 && (
+      {(todayEntries.length > 0 || todayHistory.length > 0) && (
         <div style={{ marginTop: 40 }}>
-          <SectionHead title="Added today" count={todayEntries.length} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--color-text2)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.07em',
+              }}
+            >
+              Today
+            </span>
+            {todayEntries.length > 0 && (
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)' }}>
+                {todayEntries.length} new {todayEntries.length === 1 ? 'entry' : 'entries'}
+              </span>
+            )}
+            {todayHistory.length > 0 && (
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)' }}>
+                {todayHistory.length} {todayHistory.length === 1 ? 'change' : 'changes'}
+              </span>
+            )}
+          </div>
           <TodayTimeline
             entries={todayEntries}
+            historyItems={todayHistory}
             onClick={(e) => dispatch({ type: 'SELECT_ENTRY', payload: e })}
             activeTimer={activeTimer}
             onTimerToggle={handleTimerToggle}
             onTaskToggle={handleTaskToggle}
           />
-        </div>
-      )}
-
-      {/* Today changes */}
-      {todayHistory.length > 0 && (
-        <div style={{ marginTop: todayEntries.length > 0 ? 32 : 40 }}>
-          <SectionHead title="Changed today" count={todayHistory.length} />
-          <div>
-            {todayHistory.map((item, i) => (
-              <div key={i} style={{ display: 'flex', gap: 0 }}>
-                <div style={{ width: 52, flexShrink: 0, paddingTop: 3 }}>
-                  <span style={{ fontSize: 11, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace" }}>
-                    {new Date(item.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                  </span>
-                </div>
-                <div style={{ width: 1, background: 'var(--color-border)', flexShrink: 0, marginRight: 14, position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: 7, left: -3.5, width: 8, height: 8, borderRadius: 99, background: 'var(--color-text3)', border: '2px solid var(--color-bg)' }} />
-                </div>
-                <div style={{ flex: 1, paddingBottom: 10 }}>
-                  <HistoryRow history={item.history} entryText={item.entryText} />
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
