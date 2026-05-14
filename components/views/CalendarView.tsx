@@ -34,6 +34,35 @@ export default function CalendarView() {
     return activeEntries.filter((e) => e.timestamp.startsWith(ds) || e.actionDate === ds)
   }
 
+  const getProductiveHour = (): { hour: number; totalMinutes: number } | null => {
+    const hourTotals: Record<number, number> = {}
+    days.forEach((day) => {
+      const dayEntries = getEntriesForDay(day)
+      dayEntries.forEach((e) => {
+        if (!e.timeLogs) return
+        e.timeLogs.forEach((log) => {
+          const logDate = new Date(log.startedAt)
+          if (fmt(logDate) === fmt(day)) {
+            const h = logDate.getHours()
+            hourTotals[h] = (hourTotals[h] || 0) + log.duration
+          }
+        })
+      })
+    })
+    const entries = Object.entries(hourTotals)
+    if (entries.length === 0) return null
+    const best = entries.reduce((a, b) => (a[1] > b[1] ? a : b))
+    return { hour: Number(best[0]), totalMinutes: Math.round(best[1] / 60000) }
+  }
+
+  const productiveHour = getProductiveHour()
+
+  const fmtHour = (h: number) => {
+    const period = h >= 12 ? 'PM' : 'AM'
+    const hour12 = h % 12 || 12
+    return `${hour12} ${period}`
+  }
+
   return (
     <div style={{ padding: '40px clamp(12px, 2vw, 40px) 80px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -73,12 +102,22 @@ export default function CalendarView() {
         </div>
       </div>
 
-      {/* Day headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, marginBottom: 8 }}>
+      {productiveHour && (
+        <div style={{ marginBottom: 16, fontSize: 12, color: 'var(--color-text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Icon name="stopwatch" size={12} />
+          Most productive hour: <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{fmtHour(productiveHour.hour)}</span>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--color-text3)' }}>
+            ({productiveHour.totalMinutes} min tracked)
+          </span>
+        </div>
+      )}
+
+      {/* Day headers + columns in a single grid so columns stay in sync */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
         {days.map((day) => {
           const isT = fmt(day) === fmt(today)
           return (
-            <div key={fmt(day)} style={{ textAlign: 'center' }}>
+            <div key={'h' + fmt(day)} style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
                 {day.toLocaleDateString('en-US', { weekday: 'short' })}
               </div>
@@ -94,15 +133,11 @@ export default function CalendarView() {
             </div>
           )
         })}
-      </div>
-
-      {/* Day columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, alignItems: 'start' }}>
         {days.map((day) => {
           const dayEntries = getEntriesForDay(day)
           const isT = fmt(day) === fmt(today)
           return (
-            <div key={fmt(day)} style={{
+            <div key={'b' + fmt(day)} style={{
               minHeight: 80,
               background: isT ? 'var(--color-accent-light)' : 'var(--color-bg2)',
               borderRadius: 'var(--radius)',
