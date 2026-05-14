@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useAppState } from '@/context/AppContext'
+import { Entry, EntryHistory } from '@/lib/types'
 import { fmtTime, fmtDate, fmtAmt, fmtElapsed, fmtDuration } from '@/lib/formatters'
 import { isOverdue } from '@/lib/predicates'
 import Icon from '@/components/ui/Icon'
@@ -233,6 +234,23 @@ export default function EntryDetail() {
 
   const save = () => {
     const parsedAmount = amount !== '' ? parseFloat(amount) : null
+    const changes: EntryHistory[] = []
+    const now = Date.now()
+
+    const addChange = (field: string, oldValue: unknown, newValue: unknown) => {
+      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+        changes.push({ timestamp: now, field, oldValue, newValue })
+      }
+    }
+
+    addChange('text', entry.text, text)
+    addChange('folder', entry.folder, folder || null)
+    addChange('actionDate', entry.actionDate, actionDate || null)
+    addChange('entity', entry.entity, entity || null)
+    addChange('amount', entry.amount, parsedAmount)
+    addChange('amountType', entry.amountType, parsedAmount != null ? amountType : null)
+    addChange('tags', entry.tags, tags)
+
     dispatch({
       type: 'UPDATE_ENTRY',
       payload: {
@@ -244,6 +262,7 @@ export default function EntryDetail() {
         entity: entity || null,
         amount: parsedAmount,
         amountType: parsedAmount != null ? amountType : null,
+        history: [...(entry.history || []), ...changes],
       },
     })
     setEditing(false)

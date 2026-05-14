@@ -35,18 +35,16 @@ export default function CalendarView() {
   }
 
   const getProductiveHour = (): { hour: number; totalMinutes: number } | null => {
+    const dayStrs = new Set(days.map(fmt))
     const hourTotals: Record<number, number> = {}
-    days.forEach((day) => {
-      const dayEntries = getEntriesForDay(day)
-      dayEntries.forEach((e) => {
-        if (!e.timeLogs) return
-        e.timeLogs.forEach((log) => {
-          const logDate = new Date(log.startedAt)
-          if (fmt(logDate) === fmt(day)) {
-            const h = logDate.getHours()
-            hourTotals[h] = (hourTotals[h] || 0) + log.duration
-          }
-        })
+    activeEntries.forEach((e) => {
+      if (!e.timeLogs) return
+      e.timeLogs.forEach((log) => {
+        const logDate = new Date(log.startedAt)
+        if (dayStrs.has(fmt(logDate))) {
+          const h = logDate.getHours()
+          hourTotals[h] = (hourTotals[h] || 0) + log.duration
+        }
       })
     })
     const entries = Object.entries(hourTotals)

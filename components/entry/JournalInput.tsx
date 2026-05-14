@@ -161,7 +161,8 @@ export default function JournalInput() {
       amountType: parsed.amountType || null,
       entity: parsed.entity || null,
       timeLogs: [],
-      isTask: markTask,
+        history: [],
+        isTask: markTask,
       isTaskDone: false,
       archived: false,
     }

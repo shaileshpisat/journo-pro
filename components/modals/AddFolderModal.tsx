@@ -23,7 +23,16 @@ export default function AddFolderModal() {
   const confirm = (folder?: string) => {
     const name = folder ?? folderInput.trim()
     if (name) {
-      dispatch({ type: 'UPDATE_ENTRY', payload: { ...entry, folder: name, text: `Folder ${name} is created` } })
+      const now = Date.now()
+      dispatch({
+        type: 'UPDATE_ENTRY',
+        payload: {
+          ...entry,
+          folder: name,
+          text: `Folder ${name} is created`,
+          history: [...(entry.history || []), { timestamp: now, field: 'folder', oldValue: entry.folder, newValue: name }],
+        },
+      })
     }
     dispatch({ type: 'SET_ADD_FOLDER_ENTRY', payload: null })
   }

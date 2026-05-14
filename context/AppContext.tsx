@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react'
-import { AppState, Action, Entry, ViewName } from '@/lib/types'
+import { AppState, Action, Entry, ViewName, EntryHistory } from '@/lib/types'
 import { SEED_ENTRIES } from '@/lib/seedData'
 
 function todayStr() {
@@ -64,33 +64,35 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         entries: state.entries.map((e) =>
-          e.id === action.payload ? { ...e, isTask: true, isTaskDone: false } : e
+          e.id === action.payload ? { ...e, isTask: true, isTaskDone: false, history: [...(e.history || []), { timestamp: Date.now(), field: 'isTask', oldValue: false, newValue: true }] } : e
         ),
         selectedEntry:
           state.selectedEntry?.id === action.payload
-            ? { ...state.selectedEntry, isTask: true, isTaskDone: false }
+            ? { ...state.selectedEntry, isTask: true, isTaskDone: false, history: [...(state.selectedEntry.history || []), { timestamp: Date.now(), field: 'isTask', oldValue: false, newValue: true }] }
             : state.selectedEntry,
       }
     case 'TOGGLE_TASK_DONE':
       return {
         ...state,
         entries: state.entries.map((e) =>
-          e.id === action.payload ? { ...e, isTaskDone: !e.isTaskDone } : e
+          e.id === action.payload ? { ...e, isTaskDone: !e.isTaskDone, history: [...(e.history || []), { timestamp: Date.now(), field: 'isTaskDone', oldValue: e.isTaskDone, newValue: !e.isTaskDone }] } : e
         ),
         selectedEntry:
           state.selectedEntry?.id === action.payload
-            ? { ...state.selectedEntry, isTaskDone: !state.selectedEntry.isTaskDone }
+            ? { ...state.selectedEntry, isTaskDone: !state.selectedEntry.isTaskDone, history: [...(state.selectedEntry.history || []), { timestamp: Date.now(), field: 'isTaskDone', oldValue: state.selectedEntry.isTaskDone, newValue: !state.selectedEntry.isTaskDone }] }
             : state.selectedEntry,
       }
     case 'MOVE_FOLDER': {
       const { oldPath, newPath } = action.payload
+      const now = Date.now()
       return {
         ...state,
         entries: state.entries.map((e) => {
           if (!e.folder) return e
-          if (e.folder === oldPath) return { ...e, folder: newPath }
+          if (e.folder === oldPath)
+            return { ...e, folder: newPath, history: [...(e.history || []), { timestamp: now, field: 'folder', oldValue: oldPath, newValue: newPath }] }
           if (e.folder.startsWith(oldPath + '/'))
-            return { ...e, folder: newPath + e.folder.slice(oldPath.length) }
+            return { ...e, folder: newPath + e.folder.slice(oldPath.length), history: [...(e.history || []), { timestamp: now, field: 'folder', oldValue: e.folder, newValue: newPath + e.folder.slice(oldPath.length) }] }
           return e
         }),
       }
@@ -99,22 +101,22 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         entries: state.entries.map((e) =>
-          e.id === action.payload ? { ...e, archived: true } : e
+          e.id === action.payload ? { ...e, archived: true, history: [...(e.history || []), { timestamp: Date.now(), field: 'archived', oldValue: false, newValue: true }] } : e
         ),
         selectedEntry:
           state.selectedEntry?.id === action.payload
-            ? { ...state.selectedEntry, archived: true }
+            ? { ...state.selectedEntry, archived: true, history: [...(state.selectedEntry.history || []), { timestamp: Date.now(), field: 'archived', oldValue: false, newValue: true }] }
             : state.selectedEntry,
       }
     case 'RESTORE_ENTRY':
       return {
         ...state,
         entries: state.entries.map((e) =>
-          e.id === action.payload ? { ...e, archived: false } : e
+          e.id === action.payload ? { ...e, archived: false, history: [...(e.history || []), { timestamp: Date.now(), field: 'archived', oldValue: true, newValue: false }] } : e
         ),
         selectedEntry:
           state.selectedEntry?.id === action.payload
-            ? { ...state.selectedEntry, archived: false }
+            ? { ...state.selectedEntry, archived: false, history: [...(state.selectedEntry.history || []), { timestamp: Date.now(), field: 'archived', oldValue: true, newValue: false }] }
             : state.selectedEntry,
       }
     default:

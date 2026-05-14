@@ -6,6 +6,13 @@ export interface TimeLog {
   description?: string
 }
 
+export interface EntryHistory {
+  timestamp: number
+  field: string
+  oldValue: unknown
+  newValue: unknown
+}
+
 export type ViewName =
   | 'home'
   | 'inbox'
@@ -28,6 +35,7 @@ export interface Entry {
   amountType: AmountType | null
   entity: string | null
   timeLogs: TimeLog[]
+  history: EntryHistory[]
   isTask: boolean
   isTaskDone: boolean
   archived: boolean
