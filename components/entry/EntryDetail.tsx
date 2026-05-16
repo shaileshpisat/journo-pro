@@ -500,6 +500,39 @@ export default function EntryDetail() {
           </div>
         )}
 
+        {entry.history && entry.history.length > 0 && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Icon name="clock" size={11} />
+              History
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {[...entry.history].reverse().map((h, i) => {
+                const fmtOld = h.field === 'amount' ? fmtAmt(Number(h.oldValue), entry.amountType)?.label : String(h.oldValue ?? '—')
+                const fmtNew = h.field === 'amount' ? fmtAmt(Number(h.newValue), entry.amountType)?.label : String(h.newValue ?? '—')
+                const fieldLabel = h.field === 'actionDate' ? 'Action date' : h.field === 'amountType' ? 'Amount type' : h.field.charAt(0).toUpperCase() + h.field.slice(1)
+                return (
+                  <div key={i} style={{ padding: '5px 8px', background: 'var(--color-bg2)', borderRadius: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                      <span style={{ fontSize: 11, color: 'var(--color-text3)', fontWeight: 500 }}>{fieldLabel}</span>
+                      <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
+                        {new Date(h.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        {' · '}
+                        {new Date(h.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ textDecoration: 'line-through', opacity: 0.6 }}>{fmtOld}</span>
+                      <span style={{ color: 'var(--color-text3)' }}>→</span>
+                      <span style={{ fontWeight: 500 }}>{fmtNew}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {editing && (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
             <button

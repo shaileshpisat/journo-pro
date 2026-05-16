@@ -13,7 +13,7 @@ function daysAhead(n: number): string {
 export function parseEntry(text: string): Partial<Entry> {
   const result: Partial<Entry> = { tags: [] }
 
-  const entityMatch = text.match(/@([\w]+(?:\s[\w]+)?)/)
+  const entityMatch = text.match(/@([\w]+)/)
   if (entityMatch) result.entity = entityMatch[1]
 
   const tagMatches = [...text.matchAll(/#([\w]+)/g)]

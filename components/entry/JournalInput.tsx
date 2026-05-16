@@ -30,7 +30,7 @@ function getSuggestion(text: string, cursorPos: number): SuggestionState | null 
     const charBefore = atIdx > 0 ? beforeCursor[atIdx - 1] : ' '
     if (/\s/.test(charBefore)) {
       const between = beforeCursor.slice(atIdx + 1)
-      if (/^[\w]*(?:\s[\w]+)?$/.test(between)) {
+      if (/^[\w]+$/.test(between)) {
         trigger = '@'
         triggerIdx = atIdx
       }
