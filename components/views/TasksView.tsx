@@ -1,10 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAppState } from '@/context/AppContext'
+import { Entry } from '@/lib/types'
+import { fmtDate } from '@/lib/formatters'
 import EntryCard from '@/components/entry/EntryCard'
 import SectionHead from '@/components/ui/SectionHead'
 import Icon from '@/components/ui/Icon'
+
+function getDateKey(task: Entry): string {
+  return task.actionDate || task.timestamp.split('T')[0]
+}
+
+function groupByDate(tasks: Entry[]): [string, Entry[]][] {
+  const map = new Map<string, Entry[]>()
+  for (const t of tasks) {
+    const key = getDateKey(t)
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(t)
+  }
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+}
 
 export default function TasksView() {
   const { state, dispatch } = useAppState()
@@ -20,7 +36,10 @@ export default function TasksView() {
   const active = filtered.filter((e) => !e.isTaskDone)
   const completed = filtered.filter((e) => e.isTaskDone)
 
-  const handleTimerToggle = (entry: import('@/lib/types').Entry) => {
+  const activeGroups = useMemo(() => groupByDate(active), [active])
+  const completedGroups = useMemo(() => groupByDate(completed), [completed])
+
+  const handleTimerToggle = (entry: Entry) => {
     if (activeTimer?.entryId === entry.id) {
       dispatch({ type: 'SET_TIMER', payload: null })
     } else {
@@ -28,7 +47,7 @@ export default function TasksView() {
     }
   }
 
-  const handleTaskToggle = (entry: import('@/lib/types').Entry) => {
+  const handleTaskToggle = (entry: Entry) => {
     dispatch({ type: 'TOGGLE_TASK_DONE', payload: entry.id })
   }
 
@@ -80,11 +99,11 @@ export default function TasksView() {
         )}
       </div>
 
-      {active.length > 0 && (
-        <div style={{ marginBottom: 32 }}>
-          <SectionHead title="Active" count={active.length} />
+      {activeGroups.map(([dateKey, group]) => (
+        <div key={dateKey} style={{ marginBottom: 24 }}>
+          <SectionHead title={fmtDate(dateKey)} count={group.length} />
           <div style={{ display: 'grid', gap: 8 }}>
-            {active.map((e) => (
+            {group.map((e) => (
               <EntryCard
                 key={e.id}
                 entry={e}
@@ -96,23 +115,30 @@ export default function TasksView() {
             ))}
           </div>
         </div>
-      )}
+      ))}
 
-      {completed.length > 0 && (
-        <div>
+      {completedGroups.length > 0 && (
+        <div style={{ marginTop: 32 }}>
           <SectionHead title="Completed" count={completed.length} />
-          <div style={{ display: 'grid', gap: 8 }}>
-            {completed.map((e) => (
-              <EntryCard
-                key={e.id}
-                entry={e}
-                onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
-                timerActive={activeTimer?.entryId === e.id}
-                onTimerToggle={handleTimerToggle}
-                onTaskToggle={handleTaskToggle}
-              />
-            ))}
-          </div>
+          {completedGroups.map(([dateKey, group]) => (
+            <div key={dateKey} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: 'var(--color-text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                {fmtDate(dateKey)}
+              </div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {group.map((e) => (
+                  <EntryCard
+                    key={e.id}
+                    entry={e}
+                    onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
+                    timerActive={activeTimer?.entryId === e.id}
+                    onTimerToggle={handleTimerToggle}
+                    onTaskToggle={handleTaskToggle}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

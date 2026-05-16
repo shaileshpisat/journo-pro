@@ -8,8 +8,10 @@ import Chip from '@/components/ui/Chip'
 import Icon from '@/components/ui/Icon'
 import { useAppState } from '@/context/AppContext'
 
+const DATE_SUGGESTIONS = ['today', 'tomorrow', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', '+1', '+3', '+7']
+
 interface SuggestionState {
-  trigger: '@' | '#' | '/'
+  trigger: '@' | '#' | '^' | '/'
   query: string
   start: number
   end: number
@@ -21,12 +23,13 @@ function getSuggestion(text: string, cursorPos: number): SuggestionState | null 
 
   const atIdx = beforeCursor.lastIndexOf('@')
   const hashIdx = beforeCursor.lastIndexOf('#')
+  const caretIdx = beforeCursor.lastIndexOf('^')
   const slashIdx = beforeCursor.lastIndexOf('/')
 
-  let trigger: '@' | '#' | '/' | null = null
+  let trigger: '@' | '#' | '^' | '/' | null = null
   let triggerIdx = -1
 
-  if (atIdx > hashIdx && atIdx > slashIdx && atIdx >= 0) {
+  if (atIdx > hashIdx && atIdx > caretIdx && atIdx > slashIdx && atIdx >= 0) {
     const charBefore = atIdx > 0 ? beforeCursor[atIdx - 1] : ' '
     if (/\s/.test(charBefore)) {
       const between = beforeCursor.slice(atIdx + 1)
@@ -35,13 +38,22 @@ function getSuggestion(text: string, cursorPos: number): SuggestionState | null 
         triggerIdx = atIdx
       }
     }
-  } else if (hashIdx > slashIdx && hashIdx >= 0) {
+  } else if (hashIdx > caretIdx && hashIdx > slashIdx && hashIdx >= 0) {
     const charBefore = hashIdx > 0 ? beforeCursor[hashIdx - 1] : ' '
     if (/\s/.test(charBefore)) {
       const between = beforeCursor.slice(hashIdx + 1)
       if (/^[\w]*$/.test(between)) {
         trigger = '#'
         triggerIdx = hashIdx
+      }
+    }
+  } else if (caretIdx > slashIdx && caretIdx >= 0) {
+    const charBefore = caretIdx > 0 ? beforeCursor[caretIdx - 1] : ' '
+    if (/\s/.test(charBefore)) {
+      const between = beforeCursor.slice(caretIdx + 1)
+      if (/^[\w/+\-]*$/.test(between)) {
+        trigger = '^'
+        triggerIdx = caretIdx
       }
     }
   } else if (slashIdx >= 0) {
@@ -98,6 +110,7 @@ export default function JournalInput() {
     const list =
       suggestion.trigger === '@' ? allEntities :
       suggestion.trigger === '#' ? allTags :
+      suggestion.trigger === '^' ? DATE_SUGGESTIONS :
       allFolders
     const q = suggestion.query.toLowerCase()
     return q ? list.filter((item) => item.toLowerCase().includes(q)) : list
@@ -244,7 +257,7 @@ export default function JournalInput() {
                 }
               }
             }}
-            placeholder="What's on your mind? Use @entity, #tag, /folder, $amount, tomorrow…"
+            placeholder="What's on your mind? Use @entity #tag /folder $amount ^date"
             style={{
               width: '100%',
               border: 'none',
@@ -407,7 +420,7 @@ export default function JournalInput() {
           marginTop: 8,
         }}
       >
-        All entries go to Inbox · Use @entity #tag /folder $amount
+        All entries go to Inbox · Use @entity #tag /folder $amount ^date
       </p>
     </div>
   )

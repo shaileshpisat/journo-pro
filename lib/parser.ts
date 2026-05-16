@@ -10,6 +10,30 @@ function daysAhead(n: number): string {
   return d.toISOString().split('T')[0]
 }
 
+function parseCaretDate(raw: string): string | null {
+  const cleaned = raw.trim().toLowerCase()
+  if (cleaned === 'today') return todayStr()
+  if (cleaned === 'tomorrow') return daysAhead(1)
+  if (cleaned === 'yesterday') return daysAhead(-1)
+  if (/^[+-]\d+$/.test(cleaned)) return daysAhead(parseInt(cleaned))
+  const dayMap: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
+  const prefix = cleaned.slice(0, 3)
+  if (prefix in dayMap) {
+    const target = dayMap[prefix]
+    const today = new Date().getDay()
+    let diff = target - today
+    if (diff <= 0) diff += 7
+    return daysAhead(diff)
+  }
+  if (/^\d{1,2}\/\d{1,2}$/.test(cleaned)) {
+    const [m, d] = cleaned.split('/').map(Number)
+    const date = new Date(new Date().getFullYear(), m - 1, d)
+    return date.toISOString().split('T')[0]
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned
+  return null
+}
+
 export function parseEntry(text: string): Partial<Entry> {
   const result: Partial<Entry> = { tags: [] }
 
@@ -21,6 +45,12 @@ export function parseEntry(text: string): Partial<Entry> {
 
   const folderMatch = text.match(/\/([\w]+(?:\/[\w]+)*)/)
   if (folderMatch) result.folder = folderMatch[1]
+
+  const caretMatch = text.match(/\^(\w[\w/+\-]*)/)
+  if (caretMatch) {
+    const parsedDate = parseCaretDate(caretMatch[1])
+    if (parsedDate) result.actionDate = parsedDate
+  }
 
   const amtMatch = text.match(/[\$₹€£]?\s?(\d[\d,]*(?:\.\d+)?)\s?[kK]?/)
   if (amtMatch) {
