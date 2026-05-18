@@ -70,6 +70,13 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M8 5V11M6.5 6.5H9C9.55 6.5 10 6.95 10 7.5C10 8.05 9.55 8.5 9 8.5H7C6.45 8.5 6 8.95 6 9.5C6 10.05 6.45 10.5 7 10.5H9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </>
   ),
+  transactions: (
+    <>
+      <path d="M3 5h10M3 8h10M3 11h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M6 3v4M6 5L4 3M6 5l2-2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 11v4M10 13l-2 2M10 13l2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
   clock: (
     <>
       <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" fill="none" />

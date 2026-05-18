@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { id: 'tasks', label: 'Tasks', icon: 'check' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar' },
   { id: 'entities', label: 'Entities', icon: 'entity' },
+  { id: 'transactions', label: 'Transactions', icon: 'transactions' },
   { id: 'archive', label: 'Archives', icon: 'archive' },
 ]
 

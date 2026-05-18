@@ -12,6 +12,7 @@ import FolderDetailView from '@/components/views/FolderDetailView'
 import SettingsView from '@/components/views/SettingsView'
 import ArchivesView from '@/components/views/ArchivesView'
 import EntitiesView from '@/components/views/EntitiesView'
+import TransactionsView from '@/components/views/TransactionsView'
 import EntryDetail from '@/components/entry/EntryDetail'
 import FloatingTimer from '@/components/FloatingTimer'
 import AddFolderModal from '@/components/modals/AddFolderModal'
@@ -31,6 +32,7 @@ export default function App() {
     if (view === 'settings') return <SettingsView />
     if (view === 'archive') return <ArchivesView />
     if (view === 'entities') return <EntitiesView />
+    if (view === 'transactions') return <TransactionsView />
     if (view.startsWith('folder:')) return <FolderDetailView folderName={view.slice(7)} />
     return <HomeView />
   }

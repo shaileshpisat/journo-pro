@@ -23,6 +23,7 @@ export type ViewName =
   | 'settings'
   | 'archive'
   | 'entities'
+  | 'transactions'
   | `folder:${string}`
 
 export interface Entry {
