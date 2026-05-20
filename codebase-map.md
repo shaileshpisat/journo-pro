@@ -207,8 +207,8 @@ type ViewName =
 | `SET_TIMER` | `TimerState \| null` | Start/stop timer |
 | `SET_ADD_FOLDER_ENTRY` | `Entry \| null` | Open/close AddFolderModal |
 | `MOVE_FOLDER` | `{ oldPath, newPath }` | Rename folder path on all matching entries |
-| `ADD_COMMENT` | `{ entryId: number, comment: Comment }` | Append comment to entry.comments |
-| `EDIT_COMMENT` | `{ entryId: number, commentId: number, text: string }` | Update comment text by id |
+| `ADD_COMMENT` | `{ entryId: number, comment: Comment }` | Append comment to entry.comments; records `commentAdded` in history |
+| `EDIT_COMMENT` | `{ entryId: number, commentId: number, text: string }` | Update comment text by id; records `commentEdited` in history |
 
 ### localStorage sync
 

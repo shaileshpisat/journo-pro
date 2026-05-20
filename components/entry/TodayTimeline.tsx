@@ -31,6 +31,8 @@ function fmtHistField(field: string): string {
     isTask: 'Task',
     isTaskDone: 'Done',
     archived: 'Archive',
+    commentAdded: 'Comment added',
+    commentEdited: 'Comment edited',
   }
   return map[field] || field
 }

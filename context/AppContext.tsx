@@ -121,27 +121,33 @@ function reducer(state: AppState, action: Action): AppState {
       }
     case 'ADD_COMMENT': {
       const { entryId, comment } = action.payload
+      const now = Date.now()
       return {
         ...state,
         entries: state.entries.map((e) =>
-          e.id === entryId ? { ...e, comments: [...(e.comments || []), comment] } : e
+          e.id === entryId
+            ? { ...e, comments: [...(e.comments || []), comment], history: [...(e.history || []), { timestamp: now, field: 'commentAdded', oldValue: null, newValue: comment.text }] }
+            : e
         ),
         selectedEntry:
           state.selectedEntry?.id === entryId
-            ? { ...state.selectedEntry, comments: [...(state.selectedEntry.comments || []), comment] }
+            ? { ...state.selectedEntry, comments: [...(state.selectedEntry.comments || []), comment], history: [...(state.selectedEntry.history || []), { timestamp: now, field: 'commentAdded', oldValue: null, newValue: comment.text }] }
             : state.selectedEntry,
       }
     }
     case 'EDIT_COMMENT': {
       const { entryId, commentId, text } = action.payload
+      const now = Date.now()
       return {
         ...state,
-        entries: state.entries.map((e) =>
-          e.id === entryId ? { ...e, comments: (e.comments || []).map((c) => c.id === commentId ? { ...c, text } : c) } : e
-        ),
+        entries: state.entries.map((e) => {
+          if (e.id !== entryId) return e
+          const oldText = (e.comments || []).find((c) => c.id === commentId)?.text ?? ''
+          return { ...e, comments: (e.comments || []).map((c) => c.id === commentId ? { ...c, text } : c), history: [...(e.history || []), { timestamp: now, field: 'commentEdited', oldValue: oldText, newValue: text }] }
+        }),
         selectedEntry:
           state.selectedEntry?.id === entryId
-            ? { ...state.selectedEntry, comments: (state.selectedEntry.comments || []).map((c) => c.id === commentId ? { ...c, text } : c) }
+            ? { ...state.selectedEntry, comments: (state.selectedEntry.comments || []).map((c) => c.id === commentId ? { ...c, text } : c), history: [...(state.selectedEntry.history || []), { timestamp: now, field: 'commentEdited', oldValue: (state.selectedEntry.comments || []).find((c) => c.id === commentId)?.text ?? '', newValue: text }] }
             : state.selectedEntry,
       }
     }

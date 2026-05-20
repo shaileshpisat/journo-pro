@@ -23,11 +23,14 @@ export default function HomeView() {
   const [showScrollTop, setShowScrollTop] = useState(false)
   const actionTodayRef = useRef<HTMLDivElement>(null)
   const needsActionRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const onScroll = () => setShowScrollTop(window.scrollY > 300)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    const scrollable = containerRef.current?.parentElement
+    if (!scrollable) return
+    const onScroll = () => setShowScrollTop(scrollable.scrollTop > 300)
+    scrollable.addEventListener('scroll', onScroll, { passive: true })
+    return () => scrollable.removeEventListener('scroll', onScroll)
   }, [])
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
@@ -401,7 +404,7 @@ export default function HomeView() {
 
       {showScrollTop && (
         <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          onClick={() => containerRef.current?.parentElement?.scrollTo({ top: 0, behavior: 'smooth' })}
           style={{
             position: 'fixed',
             bottom: 28,
