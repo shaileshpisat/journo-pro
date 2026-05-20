@@ -49,7 +49,7 @@ function fmtHistValue(field: string, val: unknown): string {
   return String(val).slice(0, 50)
 }
 
-function HistoryRow({ history, entryText }: { history: EntryHistory; entryText: string }) {
+function HistoryRow({ history, entryText, timestamp }: { history: EntryHistory; entryText: string; timestamp: number }) {
   return (
     <div style={{
       background: 'transparent',
@@ -70,10 +70,15 @@ function HistoryRow({ history, entryText }: { history: EntryHistory; entryText: 
           {entryText.slice(0, 40)}{entryText.length > 40 ? '…' : ''}
         </span>
       </div>
-      <div style={{ color: 'var(--color-text3)', fontSize: 11, fontFamily: "'DM Mono', monospace", paddingLeft: 17 }}>
-        {fmtHistValue(history.field, history.oldValue)}
-        <span style={{ margin: '0 4px', color: 'var(--color-accent)' }}>→</span>
-        {fmtHistValue(history.field, history.newValue)}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 17 }}>
+        <span style={{ fontSize: 11, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace", flexShrink: 0 }}>
+          {new Date(timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+        </span>
+        <span style={{ color: 'var(--color-text3)', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+          {fmtHistValue(history.field, history.oldValue)}
+          <span style={{ margin: '0 4px', color: 'var(--color-accent)' }}>→</span>
+          {fmtHistValue(history.field, history.newValue)}
+        </span>
       </div>
     </div>
   )
@@ -258,7 +263,7 @@ export default function TodayTimeline({ entries, historyItems, onClick, activeTi
               )
             })}
             {histByHour[h]?.map((item, i) => (
-              <HistoryRow key={`h-${i}`} history={item.history} entryText={item.entryText} />
+              <HistoryRow key={`h-${i}`} history={item.history} entryText={item.entryText} timestamp={item.timestamp} />
             ))}
           </div>
         </div>
