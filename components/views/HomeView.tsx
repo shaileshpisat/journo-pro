@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { isToday, isOverdue } from '@/lib/predicates'
 import { fmtAmt } from '@/lib/formatters'
@@ -19,6 +19,20 @@ function todayStr() {
 export default function HomeView() {
   const { state, dispatch } = useAppState()
   const { entries, activeTimer } = state
+  const [showChanges, setShowChanges] = useState(true)
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const actionTodayRef = useRef<HTMLDivElement>(null)
+  const needsActionRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 300)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const activeEntries = entries.filter((e) => !e.archived)
   const todayEntries = activeEntries.filter((e) => isToday(e.timestamp)).slice(0, 6)
@@ -165,9 +179,89 @@ export default function HomeView() {
         </div>
       )}
 
+      {/* Quick nav */}
+      {(todayAction.length > 0 || overdue.length > 0) && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 24,
+            justifyContent: 'center',
+          }}
+        >
+          {todayAction.length > 0 && (
+            <button
+              onClick={() => scrollTo(actionTodayRef)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '7px 16px',
+                borderRadius: 99,
+                border: '1px solid var(--color-amber)',
+                background: 'var(--color-amber-light)',
+                color: 'var(--color-text)',
+                fontFamily: 'inherit',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: 'var(--color-amber)',
+                }}
+              />
+              Action Today
+              <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
+                {todayAction.length}
+              </span>
+            </button>
+          )}
+          {overdue.length > 0 && (
+            <button
+              onClick={() => scrollTo(needsActionRef)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '7px 16px',
+                borderRadius: 99,
+                border: '1px solid var(--color-red)',
+                background: 'var(--color-red-light)',
+                color: 'var(--color-text)',
+                fontFamily: 'inherit',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: 'var(--color-red)',
+                }}
+              />
+              Needs Action
+              <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
+                {overdue.length}
+              </span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Today timeline */}
       {(todayEntries.length > 0 || todayHistory.length > 0) && (
-        <div style={{ marginTop: 40 }}>
+        <div style={{ marginTop: 32 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
             <span
               style={{
@@ -190,10 +284,51 @@ export default function HomeView() {
                 {todayHistory.length} {todayHistory.length === 1 ? 'change' : 'changes'}
               </span>
             )}
+            {todayHistory.length > 0 && (
+              <span
+                onClick={() => setShowChanges((v) => !v)}
+                style={{
+                  marginLeft: 'auto',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: 'var(--color-text3)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  userSelect: 'none',
+                }}
+              >
+                <span
+                  style={{
+                    width: 28,
+                    height: 14,
+                    borderRadius: 99,
+                    background: showChanges ? 'var(--color-accent)' : 'var(--color-bg3)',
+                    position: 'relative',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 2,
+                      left: showChanges ? 16 : 2,
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      background: '#fff',
+                      transition: 'left 0.15s',
+                    }}
+                  />
+                </span>
+                Changes
+              </span>
+            )}
           </div>
           <TodayTimeline
             entries={todayEntries}
-            historyItems={todayHistory}
+            historyItems={showChanges ? todayHistory : []}
             onClick={(e) => dispatch({ type: 'SELECT_ENTRY', payload: e })}
             activeTimer={activeTimer}
             onTimerToggle={handleTimerToggle}
@@ -205,6 +340,7 @@ export default function HomeView() {
       {/* Action today */}
       {todayAction.length > 0 && (
         <div
+          ref={actionTodayRef}
           style={{
             marginTop: 32,
             padding: 16,
@@ -233,6 +369,7 @@ export default function HomeView() {
       {/* Needs action */}
       {overdue.length > 0 && (
         <div
+          ref={needsActionRef}
           style={{
             marginTop: 20,
             padding: 16,
@@ -260,6 +397,33 @@ export default function HomeView() {
               ))}
           </div>
         </div>
+      )}
+
+      {showScrollTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          style={{
+            position: 'fixed',
+            bottom: 28,
+            right: 28,
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            background: '#fff',
+            border: '1px solid var(--color-border)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-text2)',
+            fontSize: 18,
+            zIndex: 100,
+          }}
+          title="Back to top"
+        >
+          ↑
+        </button>
       )}
     </div>
   )

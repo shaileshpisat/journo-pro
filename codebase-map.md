@@ -548,9 +548,11 @@ Sections (in order):
 1. Date header + "What's happening?" title
 2. `<JournalInput />` (centered, max-width 680px)
 3. Today summary pills (entities/folders/tags used today)
-4. **Added today** — `<TodayTimeline>` (entries where `isToday(timestamp)`, max 6)
-5. **Action today** — grid of minimal `<EntryCard>`s where `actionDate === today && !isToday(timestamp)`, amber panel
-6. **Needs action** — horizontal scroll of overdue minimal cards, red panel
+4. **Quick nav** — centered pill buttons for "Action Today" (amber) and "Needs Action" (red), shown only when items exist; smooth-scroll to the respective section via `ref`
+5. **Today timeline** — `<TodayTimeline>` (entries where `isToday(timestamp)`, max 6) with a toggle switch (accent/gray pill) to show/hide history changes
+6. **Action today** — grid of minimal `<EntryCard>`s where `actionDate === today && !isToday(timestamp)`, amber panel
+7. **Needs action** — horizontal scroll of overdue minimal cards, red panel
+8. **Floating scroll-to-top** — fixed `↑` button (bottom-right, white circle with shadow) appears when `window.scrollY > 300`
 
 #### `InboxView.tsx`
 Sections (in order):
