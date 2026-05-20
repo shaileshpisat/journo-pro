@@ -15,6 +15,7 @@ import EntitiesView from '@/components/views/EntitiesView'
 import TransactionsView from '@/components/views/TransactionsView'
 import EntryDetail from '@/components/entry/EntryDetail'
 import FloatingTimer from '@/components/FloatingTimer'
+import ScrollToTop from '@/components/ScrollToTop'
 import AddFolderModal from '@/components/modals/AddFolderModal'
 
 export default function App() {
@@ -44,6 +45,7 @@ export default function App() {
         {renderView()}
       </main>
       {activeTimer && <FloatingTimer />}
+      <ScrollToTop />
       {addFolderEntry && <AddFolderModal />}
     </div>
   )

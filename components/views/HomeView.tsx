@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState, useEffect } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { isToday, isOverdue } from '@/lib/predicates'
 import { fmtAmt } from '@/lib/formatters'
@@ -20,18 +20,8 @@ export default function HomeView() {
   const { state, dispatch } = useAppState()
   const { entries, activeTimer } = state
   const [showChanges, setShowChanges] = useState(true)
-  const [showScrollTop, setShowScrollTop] = useState(false)
   const actionTodayRef = useRef<HTMLDivElement>(null)
   const needsActionRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const scrollable = containerRef.current?.parentElement
-    if (!scrollable) return
-    const onScroll = () => setShowScrollTop(scrollable.scrollTop > 300)
-    scrollable.addEventListener('scroll', onScroll, { passive: true })
-    return () => scrollable.removeEventListener('scroll', onScroll)
-  }, [])
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -402,32 +392,6 @@ export default function HomeView() {
         </div>
       )}
 
-      {showScrollTop && (
-        <button
-          onClick={() => containerRef.current?.parentElement?.scrollTo({ top: 0, behavior: 'smooth' })}
-          style={{
-            position: 'fixed',
-            bottom: 28,
-            right: 28,
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            background: '#fff',
-            border: '1px solid var(--color-border)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--color-text2)',
-            fontSize: 18,
-            zIndex: 100,
-          }}
-          title="Back to top"
-        >
-          ↑
-        </button>
-      )}
     </div>
   )
 }

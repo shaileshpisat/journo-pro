@@ -389,7 +389,11 @@ Covers: inflows, outflows, overdue entries, today/yesterday/past entries, multip
 
 ### hooks/ & context/
 
-#### `src/hooks/useLocalStorage.ts`
+#### `src/components/ScrollToTop.tsx`
+- Renders a fixed `↑` button (bottom-right, white circle with shadow) when `<main>` is scrolled past 300px
+- Listens for scroll on `<main>` via `document.querySelector`, not window
+- Scrolls `<main>` to top on click
+- Added to App.tsx alongside FloatingTimer
 ```ts
 useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void]
 ```
@@ -552,7 +556,6 @@ Sections (in order):
 5. **Today timeline** — `<TodayTimeline>` (entries where `isToday(timestamp)`, max 6) with a toggle switch (accent/gray pill) to show/hide history changes
 6. **Action today** — grid of minimal `<EntryCard>`s where `actionDate === today && !isToday(timestamp)`, amber panel
 7. **Needs action** — horizontal scroll of overdue minimal cards, red panel
-8. **Floating scroll-to-top** — fixed `↑` button (bottom-right, white circle with shadow) appears when `window.scrollY > 300`
 
 #### `InboxView.tsx`
 Sections (in order):
