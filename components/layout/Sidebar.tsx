@@ -87,24 +87,26 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav style={{ padding: '10px 6px', flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
-        {NAV_ITEMS.map((item) => (
-          <NavItem
-            key={item.id}
-            item={{
-              ...item,
-              badge: item.id === 'inbox' ? inboxCount : item.id === 'tasks' ? tasksCount : undefined,
-            }}
-            active={view === item.id}
-            onClick={() => setView(item.id)}
-            collapsed={collapsed}
-            overdueCount={item.id === 'inbox' ? overdueCount : 0}
-          />
-        ))}
+      <nav style={{ padding: '10px 6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+        <div>
+          {NAV_ITEMS.map((item) => (
+            <NavItem
+              key={item.id}
+              item={{
+                ...item,
+                badge: item.id === 'inbox' ? inboxCount : item.id === 'tasks' ? tasksCount : undefined,
+              }}
+              active={view === item.id}
+              onClick={() => setView(item.id)}
+              collapsed={collapsed}
+              overdueCount={item.id === 'inbox' ? overdueCount : item.id === 'tasks' ? tasksCount : 0}
+            />
+          ))}
+        </div>
 
         {/* Folders section */}
         {!collapsed && rootFolders.length > 0 && (
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             <div
               style={{
                 margin: '14px 6px 6px',
@@ -131,16 +133,18 @@ export default function Sidebar() {
                 All
               </span>
             </div>
-            {tree.map((node) => (
-              <FolderTreeNode
-                key={node.path}
-                node={node}
-                entries={activeEntries}
-                depth={0}
-                variant="sidebar"
-              />
-            ))}
-          </>
+            <div style={{ overflowY: 'auto', overflowX: 'auto', flex: 1, minHeight: 0 }}>
+              {tree.map((node) => (
+                <FolderTreeNode
+                  key={node.path}
+                  node={node}
+                  entries={activeEntries}
+                  depth={0}
+                  variant="sidebar"
+                />
+              ))}
+            </div>
+          </div>
         )}
         {collapsed && tree.length > 0 && (
           <div style={{ marginTop: 8 }}>

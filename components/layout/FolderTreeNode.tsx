@@ -80,7 +80,7 @@ export default function FolderTreeNode({ node, entries, depth = 0, variant = 'vi
             <Icon name="folder" size={14} color="var(--color-accent)" />
           </div>
         )}
-        <div style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={() => dispatch({ type: 'SET_VIEW', payload: `folder:${node.path}` })}>
+        <div style={{ whiteSpace: 'nowrap', minWidth: 'max-content' }} onClick={() => dispatch({ type: 'SET_VIEW', payload: `folder:${node.path}` })}>
           <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
             {isSidebar ? (
               <>{node.name} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--color-text3)', marginLeft: 4 }}>({totalCount})</span></>
