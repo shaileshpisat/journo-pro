@@ -88,4 +88,4 @@ export type Action =
   | { type: 'ARCHIVE_ENTRY'; payload: number }
   | { type: 'RESTORE_ENTRY'; payload: number }
   | { type: 'ADD_COMMENT'; payload: { entryId: number; comment: Comment } }
-  | { type: 'DELETE_COMMENT'; payload: { entryId: number; commentId: number } }
+  | { type: 'EDIT_COMMENT'; payload: { entryId: number; commentId: number; text: string } }

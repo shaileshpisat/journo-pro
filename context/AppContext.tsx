@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react'
-import { AppState, Action, Entry, ViewName, EntryHistory, Comment } from '@/lib/types'
+import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState } from '@/lib/types'
 import { SEED_ENTRIES } from '@/lib/seedData'
 
 function todayStr() {
@@ -132,16 +132,16 @@ function reducer(state: AppState, action: Action): AppState {
             : state.selectedEntry,
       }
     }
-    case 'DELETE_COMMENT': {
-      const { entryId, commentId } = action.payload
+    case 'EDIT_COMMENT': {
+      const { entryId, commentId, text } = action.payload
       return {
         ...state,
         entries: state.entries.map((e) =>
-          e.id === entryId ? { ...e, comments: (e.comments || []).filter((c) => c.id !== commentId) } : e
+          e.id === entryId ? { ...e, comments: (e.comments || []).map((c) => c.id === commentId ? { ...c, text } : c) } : e
         ),
         selectedEntry:
           state.selectedEntry?.id === entryId
-            ? { ...state.selectedEntry, comments: (state.selectedEntry.comments || []).filter((c) => c.id !== commentId) }
+            ? { ...state.selectedEntry, comments: (state.selectedEntry.comments || []).map((c) => c.id === commentId ? { ...c, text } : c) }
             : state.selectedEntry,
       }
     }
@@ -179,6 +179,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const storedView = window.localStorage.getItem('jp_view') as ViewName | null
       if (storedView) dispatch({ type: 'SET_VIEW', payload: storedView })
     } catch {}
+    try {
+      const storedTimer = window.localStorage.getItem('jp_activeTimer')
+      if (storedTimer) {
+        const parsed: TimerState = JSON.parse(storedTimer)
+        dispatch({ type: 'SET_TIMER', payload: parsed })
+      }
+    } catch {}
   }, [])
 
   // Persist entries
@@ -192,6 +199,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated.current) return
     window.localStorage.setItem('jp_view', state.view)
   }, [state.view])
+
+  // Persist active timer
+  useEffect(() => {
+    if (!hydrated.current) return
+    if (state.activeTimer) {
+      window.localStorage.setItem('jp_activeTimer', JSON.stringify(state.activeTimer))
+    } else {
+      window.localStorage.removeItem('jp_activeTimer')
+    }
+  }, [state.activeTimer])
 
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>
 }

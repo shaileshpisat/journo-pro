@@ -50,8 +50,7 @@ export default function FloatingTimer() {
       style={{
         position: 'fixed',
         bottom: 24,
-        left: '50%',
-        transform: 'translateX(-50%)',
+        right: 24,
         background: 'var(--color-text)',
         color: '#fff',
         borderRadius: 14,

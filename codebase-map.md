@@ -208,12 +208,12 @@ type ViewName =
 | `SET_ADD_FOLDER_ENTRY` | `Entry \| null` | Open/close AddFolderModal |
 | `MOVE_FOLDER` | `{ oldPath, newPath }` | Rename folder path on all matching entries |
 | `ADD_COMMENT` | `{ entryId: number, comment: Comment }` | Append comment to entry.comments |
-| `DELETE_COMMENT` | `{ entryId: number, commentId: number }` | Remove comment from entry.comments |
+| `EDIT_COMMENT` | `{ entryId: number, commentId: number, text: string }` | Update comment text by id |
 
 ### localStorage sync
 
-- On **mount**: reads `jp_entries` and `jp_view` once via `useEffect` + `useRef` guard.
-- On **state change**: `useEffect` watching `state.entries` → saves to `jp_entries`; same for `state.view`.
+- On **mount**: reads `jp_entries`, `jp_view`, and `jp_activeTimer` once via `useEffect` + `useRef` guard.
+- On **state change**: `useEffect` watching `state.entries` → saves to `jp_entries`; same for `state.view` and `state.activeTimer`.
 - **Seed data**: If localStorage is empty, `SEED_ENTRIES` is used as initial state.
 
 ### Consuming state in components
@@ -629,7 +629,7 @@ User selects destination → clicks "Move here"
 ```
 User clicks stopwatch on EntryCard / EntryDetail
   → dispatch SET_TIMER({ entryId, startedAt: Date.now(), baseElapsed: 0 })
-  → FloatingTimer appears (fixed bottom center)
+  → FloatingTimer appears (fixed bottom-right)
   → setInterval updates elapsed every 200ms
 User clicks Stop
   → dispatch SET_TIMER(null)
@@ -706,5 +706,6 @@ style={{ color: 'var(--color-accent)', background: 'var(--color-accent-light)' }
 |---|---|---|
 | `jp_entries` | `Entry[]` JSON | All journal entries |
 | `jp_view` | `string` | Last active view name |
+| `jp_activeTimer` | `TimerState` JSON | Active timer (persists across refresh) |
 
-Both are written by `AppContext.tsx` via `useEffect`. Read once on mount via the hydration guard (`useRef`). On first visit (empty localStorage), `SEED_ENTRIES` from `src/lib/seedData.ts` is used.
+Written by `AppContext.tsx` via `useEffect`. Read once on mount via hydration guard (`useRef`). On first visit (empty localStorage), `SEED_ENTRIES` from `src/lib/seedData.ts` is used.

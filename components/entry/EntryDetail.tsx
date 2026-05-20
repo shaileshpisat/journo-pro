@@ -219,6 +219,8 @@ export default function EntryDetail() {
 
   const [editing, setEditing] = useState(false)
   const [commentInput, setCommentInput] = useState('')
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
+  const [editingCommentText, setEditingCommentText] = useState('')
   const [text, setText] = useState(entry.text)
   const [folder, setFolder] = useState(entry.folder || '')
   const [actionDate, setActionDate] = useState(entry.actionDate || '')
@@ -517,6 +519,106 @@ export default function EntryDetail() {
           </div>
         )}
 
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: 11, color: 'var(--color-text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="messageSquare" size={11} />
+            Comments
+            {(entry.comments?.length ?? 0) > 0 && (
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--color-text3)' }}>
+                ({entry.comments.length})
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+            {entry.comments && entry.comments.length > 0 ? (
+              [...entry.comments].reverse().map((c) => {
+                const canEdit = Date.now() - new Date(c.timestamp).getTime() < 4 * 60 * 60 * 1000
+                const isEditing = editingCommentId === c.id
+                return (
+                  <div key={c.id} style={{ padding: '8px 10px', background: 'var(--color-bg2)', borderRadius: 8 }}>
+                    {isEditing ? (
+                      <div>
+                        <input
+                          value={editingCommentText}
+                          onChange={(e) => setEditingCommentText(e.target.value)}
+                          style={{ ...fieldInputStyle, marginBottom: 6 }}
+                          autoFocus
+                        />
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => setEditingCommentId(null)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, color: 'var(--color-text3)', padding: '2px 6px' }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (editingCommentText.trim()) {
+                                dispatch({ type: 'EDIT_COMMENT', payload: { entryId: entry.id, commentId: c.id, text: editingCommentText.trim() } })
+                                setEditingCommentId(null)
+                              }
+                            }}
+                            style={{ background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: 4, padding: '3px 10px', fontFamily: 'inherit', fontSize: 11, cursor: 'pointer' }}
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: 12, color: 'var(--color-text)', lineHeight: 1.45, marginBottom: 4 }}>
+                          {c.text}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 10, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace" }}>
+                            {new Date(c.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </span>
+                          {canEdit && (
+                            <button
+                              onClick={() => { setEditingCommentId(c.id); setEditingCommentText(c.text) }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--color-text3)', display: 'flex' }}
+                            >
+                              <Icon name="edit" size={10} />
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })
+            ) : (
+              <div style={{ fontSize: 12, color: 'var(--color-text3)', lineHeight: 1.4 }}>
+                No comments yet.
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              value={commentInput}
+              onChange={(e) => setCommentInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && commentInput.trim()) handleAddComment() }}
+              placeholder="Add a comment..."
+              style={{ ...fieldInputStyle, flex: 1 }}
+            />
+            <button
+              onClick={handleAddComment}
+              disabled={!commentInput.trim()}
+              style={{
+                background: commentInput.trim() ? 'var(--color-accent)' : 'var(--color-bg3)',
+                color: commentInput.trim() ? '#fff' : 'var(--color-text3)',
+                border: 'none', borderRadius: 6, padding: '4px 12px',
+                fontFamily: 'inherit', fontSize: 12,
+                cursor: commentInput.trim() ? 'pointer' : 'default',
+              }}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
         {entry.history && entry.history.length > 0 && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--color-border)' }}>
             <div style={{ fontSize: 11, color: 'var(--color-text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -549,68 +651,6 @@ export default function EntryDetail() {
             </div>
           </div>
         )}
-
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--color-border)' }}>
-          <div style={{ fontSize: 11, color: 'var(--color-text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Icon name="messageSquare" size={11} />
-            Comments
-            {(entry.comments?.length ?? 0) > 0 && (
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--color-text3)' }}>
-                ({entry.comments.length})
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-            {entry.comments && entry.comments.length > 0 ? (
-              [...entry.comments].reverse().map((c) => (
-                <div key={c.id} style={{ padding: '8px 10px', background: 'var(--color-bg2)', borderRadius: 8 }}>
-                  <div style={{ fontSize: 12, color: 'var(--color-text)', lineHeight: 1.45, marginBottom: 4 }}>
-                    {c.text}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 10, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace" }}>
-                      {new Date(c.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                    </span>
-                    <button
-                      onClick={() => dispatch({ type: 'DELETE_COMMENT', payload: { entryId: entry.id, commentId: c.id } })}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--color-text3)', display: 'flex' }}
-                    >
-                      <Icon name="x" size={10} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div style={{ fontSize: 12, color: 'var(--color-text3)', lineHeight: 1.4 }}>
-                No comments yet.
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input
-              value={commentInput}
-              onChange={(e) => setCommentInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && commentInput.trim()) handleAddComment() }}
-              placeholder="Add a comment..."
-              style={{ ...fieldInputStyle, flex: 1 }}
-            />
-            <button
-              onClick={handleAddComment}
-              disabled={!commentInput.trim()}
-              style={{
-                background: commentInput.trim() ? 'var(--color-accent)' : 'var(--color-bg3)',
-                color: commentInput.trim() ? '#fff' : 'var(--color-text3)',
-                border: 'none', borderRadius: 6, padding: '4px 12px',
-                fontFamily: 'inherit', fontSize: 12,
-                cursor: commentInput.trim() ? 'pointer' : 'default',
-              }}
-            >
-              Add
-            </button>
-          </div>
-        </div>
 
         {editing && (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
