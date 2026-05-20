@@ -4,12 +4,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Icon from './Icon'
 
 interface SearchableSelectProps {
-  value: string
-  onChange: (value: string) => void
+  value: string | string[]
+  onChange: (value: string | string[]) => void
   options: string[]
   placeholder?: string
   allLabel?: string
   formatOption?: (option: string) => string
+  multi?: boolean
 }
 
 export default function SearchableSelect({
@@ -19,6 +20,7 @@ export default function SearchableSelect({
   placeholder = 'Search…',
   allLabel = 'All',
   formatOption,
+  multi,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -26,6 +28,9 @@ export default function SearchableSelect({
   const wrapRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+
+  const selected: string[] = multi ? (value as string[]) : (value ? [value as string] : [])
+  const hasValue = multi ? (selected.length > 0) : !!value
 
   useEffect(() => {
     if (!open) return
@@ -54,11 +59,33 @@ export default function SearchableSelect({
     setActiveIndex(0)
   }, [query])
 
-  const display = value ? (formatOption ? formatOption(value) : value) : allLabel
+  const display = multi
+    ? selected.length === 0
+      ? allLabel
+      : `${selected.length} selected`
+    : value
+      ? (formatOption ? formatOption(value as string) : value as string)
+      : allLabel
 
   const selectValue = (v: string) => {
-    onChange(v)
-    setOpen(false)
+    if (multi) {
+      const arr = value as string[]
+      if (v === '') {
+        onChange([])
+      } else {
+        const next = arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]
+        onChange(next)
+      }
+    } else {
+      onChange(v)
+      setOpen(false)
+    }
+  }
+
+  const clearAll = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (multi) onChange([])
+    else onChange('')
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -70,10 +97,22 @@ export default function SearchableSelect({
       setActiveIndex((i) => Math.max(i - 1, 0))
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      if (activeIndex === 0) selectValue('')
-      else {
+      if (activeIndex === 0) {
+        if (multi) onChange([])
+        else onChange('')
+        if (!multi) setOpen(false)
+      } else {
         const pick = filtered[activeIndex - 1]
-        if (pick !== undefined) selectValue(pick)
+        if (pick !== undefined) {
+          if (multi) {
+            const arr = value as string[]
+            const next = arr.includes(pick) ? arr.filter((x) => x !== pick) : [...arr, pick]
+            onChange(next)
+          } else {
+            onChange(pick)
+            setOpen(false)
+          }
+        }
       }
     } else if (e.key === 'Escape') {
       e.preventDefault()
@@ -95,7 +134,7 @@ export default function SearchableSelect({
     fontFamily: 'inherit',
     fontSize: 12,
     background: '#fff',
-    color: value ? 'var(--color-text)' : 'var(--color-text3)',
+    color: hasValue ? 'var(--color-text)' : 'var(--color-text3)',
     outline: 'none',
     cursor: 'pointer',
     display: 'flex',
@@ -108,13 +147,10 @@ export default function SearchableSelect({
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <button type="button" onClick={() => setOpen((o) => !o)} style={triggerStyle}>
         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{display}</span>
-        {value && (
+        {hasValue && (
           <span
             role="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onChange('')
-            }}
+            onClick={clearAll}
             style={{ color: 'var(--color-text3)', fontSize: 14, lineHeight: 1, padding: '0 2px', cursor: 'pointer' }}
           >
             ×
@@ -165,21 +201,23 @@ export default function SearchableSelect({
             />
           </div>
           <div ref={listRef} style={{ maxHeight: 220, overflowY: 'auto', padding: 4 }}>
-            <div
-              data-idx={0}
-              onMouseEnter={() => setActiveIndex(0)}
-              onClick={() => selectValue('')}
-              style={{
-                padding: '7px 8px',
-                fontSize: 12,
-                cursor: 'pointer',
-                borderRadius: 6,
-                background: activeIndex === 0 ? 'var(--color-bg2)' : 'transparent',
-                color: 'var(--color-text3)',
-              }}
-            >
-              {allLabel}
-            </div>
+            {!multi && (
+              <div
+                data-idx={0}
+                onMouseEnter={() => setActiveIndex(0)}
+                onClick={() => selectValue('')}
+                style={{
+                  padding: '7px 8px',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  borderRadius: 6,
+                  background: activeIndex === 0 ? 'var(--color-bg2)' : 'transparent',
+                  color: 'var(--color-text3)',
+                }}
+              >
+                {allLabel}
+              </div>
+            )}
             {filtered.length === 0 && (
               <div style={{ padding: '10px 8px', fontSize: 12, color: 'var(--color-text3)', textAlign: 'center' }}>
                 No matches
@@ -187,7 +225,7 @@ export default function SearchableSelect({
             )}
             {filtered.map((o, i) => {
               const idx = i + 1
-              const selected = o === value
+              const sel = selected.includes(o)
               return (
                 <div
                   key={o}
@@ -201,16 +239,33 @@ export default function SearchableSelect({
                     borderRadius: 6,
                     background: activeIndex === idx ? 'var(--color-bg2)' : 'transparent',
                     color: 'var(--color-text)',
-                    fontWeight: selected ? 600 : 400,
+                    fontWeight: sel ? 600 : 400,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 6,
                   }}
                 >
+                  {multi && (
+                    <span
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 3,
+                        border: `1.5px solid ${sel ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                        background: sel ? 'var(--color-accent)' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {sel && <Icon name="check" size={9} color="#fff" />}
+                    </span>
+                  )}
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {formatOption ? formatOption(o) : o}
                   </span>
-                  {selected && <Icon name="check" size={12} color="var(--color-accent)" />}
+                  {!multi && sel && <Icon name="check" size={12} color="var(--color-accent)" />}
                 </div>
               )
             })}

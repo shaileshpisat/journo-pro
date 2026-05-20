@@ -1,7 +1,7 @@
 # JournoPro — Codebase Map
 
 > Reference document for feature development and bug fixes.
-> Last updated: 2026-04-19
+> Last updated: 2026-05-20
 
 ---
 
@@ -118,6 +118,16 @@ src/
 
 ## 4. Data Model
 
+### `Comment` — user comment on an entry
+
+```ts
+interface Comment {
+  id: number
+  text: string
+  timestamp: string     // ISO 8601
+}
+```
+
 ### `Entry` — core record
 
 ```ts
@@ -131,6 +141,7 @@ interface Entry {
   amount: number | null
   amountType: 'inflow' | 'outflow' | null
   entity: string | null // Parsed from @entity
+  comments: Comment[]   // User comments
 }
 ```
 
@@ -196,6 +207,8 @@ type ViewName =
 | `SET_TIMER` | `TimerState \| null` | Start/stop timer |
 | `SET_ADD_FOLDER_ENTRY` | `Entry \| null` | Open/close AddFolderModal |
 | `MOVE_FOLDER` | `{ oldPath, newPath }` | Rename folder path on all matching entries |
+| `ADD_COMMENT` | `{ entryId: number, comment: Comment }` | Append comment to entry.comments |
+| `DELETE_COMMENT` | `{ entryId: number, commentId: number }` | Remove comment from entry.comments |
 
 ### localStorage sync
 
@@ -396,7 +409,7 @@ SSR-safe generic hook. Reads from localStorage in `useEffect` (avoids hydration 
 ```tsx
 <Icon name="folder" size={16} color="var(--color-accent)" />
 ```
-Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`
+Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare`
 
 #### `Chip.tsx`
 ```tsx
@@ -411,7 +424,11 @@ Pill badge. `small` reduces padding and font size. `onRemove` adds a × button.
 ```
 Always accent-colored. Returns `null` if `path` is null.
 
-#### `SectionHead.tsx`
+#### `SearchableSelect.tsx`
+```tsx
+<SearchableSelect multi value={selected} onChange={setSelected} options={items} placeholder="Search…" allLabel="All" formatOption={(s) => `#${s}`} />
+```
+Reusable dropdown with search input, keyboard navigation, and optional multi-select (`multi` prop). In multi mode: checkboxes, selection count trigger, stays open on select. Closes on outside click. Supports `formatOption` for option display formatting.
 ```tsx
 <SectionHead title="Needs action" count={3} action={{ label: 'View all', fn: () => {} }} />
 ```
@@ -441,6 +458,7 @@ Props: `entry`, `onClick`, `compact?`, `overdue?`, `minimal?`, `timerActive?`, `
 | `compact` | Reduced padding |
 
 Hover state managed locally (`useState(hovered)`).
+Hover reveals a comment button (messageSquare icon with count) that opens EntryDetail.
 
 #### `JournalInput.tsx`
 No props — reads `dispatch` from context.
@@ -464,6 +482,8 @@ Edit mode toggle changes:
 - ActionDate → `<input type="date">`
 
 Save dispatches `UPDATE_ENTRY`. Back button dispatches `SELECT_ENTRY(null)`.
+
+Comments section at bottom: lists existing comments (newest first) with delete button on each, plus an inline input + Add button to post new comments. Comments dispatch `ADD_COMMENT` / `DELETE_COMMENT`.
 
 ---
 
@@ -542,11 +562,11 @@ Sections (in order):
 "+ Folder" button: `dispatch(SET_ADD_FOLDER_ENTRY, entry)`
 
 #### `SearchView.tsx`
-State: `query`, `filterEntity`, `filterFolder`, `filterTag`, `filterFrom`, `filterTo`, `filtersOpen`
+State: `query`, `filterEntity` (`string[]`), `filterFolder` (`string[]`), `filterTag` (`string[]`), `filterFrom`, `filterTo`, `filtersOpen`
 
-Filter logic: AND combination. Text search checks `entry.text` and `entry.entity` (case-insensitive). Date range checks `entry.timestamp.slice(0, 10)`.
+Filter logic: AND combination. Text search checks `entry.text` and `entry.entity` (case-insensitive). Multi-select filters check if entry matches **any** of the selected values (OR within each filter). Date range checks `entry.timestamp.slice(0, 10)`.
 
-Filter chips appear as `<Chip>` with `onRemove` when filter panel is closed.
+Filter UI uses `<SearchableSelect multi>` for Entity, Folder, Tag — each with searchable dropdown and checkboxes. Filter chips appear as `<Chip>` with `onRemove` when filter panel is closed (one chip per selected value).
 
 #### `CalendarView.tsx`
 State: `weekOffset` (0 = current week)

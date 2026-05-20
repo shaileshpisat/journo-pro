@@ -13,6 +13,12 @@ export interface EntryHistory {
   newValue: unknown
 }
 
+export interface Comment {
+  id: number
+  text: string
+  timestamp: string
+}
+
 export type ViewName =
   | 'home'
   | 'inbox'
@@ -41,6 +47,7 @@ export interface Entry {
   isTask: boolean
   isTaskDone: boolean
   archived: boolean
+  comments: Comment[]
 }
 
 export interface FolderNode {
@@ -80,3 +87,5 @@ export type Action =
   | { type: 'TOGGLE_TASK_DONE'; payload: number }
   | { type: 'ARCHIVE_ENTRY'; payload: number }
   | { type: 'RESTORE_ENTRY'; payload: number }
+  | { type: 'ADD_COMMENT'; payload: { entryId: number; comment: Comment } }
+  | { type: 'DELETE_COMMENT'; payload: { entryId: number; commentId: number } }

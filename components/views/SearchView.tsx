@@ -7,6 +7,7 @@ import EntryCard from '@/components/entry/EntryCard'
 import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
 import Icon from '@/components/ui/Icon'
+import SearchableSelect from '@/components/ui/SearchableSelect'
 import { isOverdue } from '@/lib/predicates'
 
 export default function SearchView() {
@@ -16,9 +17,9 @@ export default function SearchView() {
   const activeEntries = entries.filter((e) => !e.archived)
 
   const [query, setQuery] = useState('')
-  const [filterEntity, setFilterEntity] = useState('')
-  const [filterFolder, setFilterFolder] = useState('')
-  const [filterTag, setFilterTag] = useState('')
+  const [filterEntity, setFilterEntity] = useState<string[]>([])
+  const [filterFolder, setFilterFolder] = useState<string[]>([])
+  const [filterTag, setFilterTag] = useState<string[]>([])
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -29,19 +30,17 @@ export default function SearchView() {
 
   const results = activeEntries.filter((e) => {
     if (query && !e.text.toLowerCase().includes(query.toLowerCase()) && !(e.entity || '').toLowerCase().includes(query.toLowerCase())) return false
-    if (filterEntity && e.entity !== filterEntity) return false
-    if (filterFolder && !folderMatches(e.folder, filterFolder)) return false
-    if (filterTag && !e.tags.includes(filterTag)) return false
+    if (filterEntity.length > 0 && !filterEntity.includes(e.entity || '')) return false
+    if (filterFolder.length > 0 && !filterFolder.some((f) => folderMatches(e.folder, f))) return false
+    if (filterTag.length > 0 && !filterTag.some((t) => e.tags.includes(t))) return false
     if (filterFrom && e.timestamp.slice(0, 10) < filterFrom) return false
     if (filterTo && e.timestamp.slice(0, 10) > filterTo) return false
     return true
   })
 
-  const hasFilters = filterEntity || filterFolder || filterTag || filterFrom || filterTo
-  const activeFilterCount = [filterEntity, filterFolder, filterTag, filterFrom, filterTo].filter(Boolean).length
-  const clearAll = () => { setFilterEntity(''); setFilterFolder(''); setFilterTag(''); setFilterFrom(''); setFilterTo('') }
-
-  const selectStyle: React.CSSProperties = { flex: 1, border: '1px solid var(--color-border)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 12, background: '#fff', color: 'var(--color-text)', outline: 'none' }
+  const hasFilters = filterEntity.length > 0 || filterFolder.length > 0 || filterTag.length > 0 || filterFrom || filterTo
+  const activeFilterCount = [filterEntity.length > 0, filterFolder.length > 0, filterTag.length > 0, !!filterFrom, !!filterTo].filter(Boolean).length
+  const clearAll = () => { setFilterEntity([]); setFilterFolder([]); setFilterTag([]); setFilterFrom(''); setFilterTo('') }
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
@@ -79,31 +78,22 @@ export default function SearchView() {
         <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16, marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Entity</label>
-            <select value={filterEntity} onChange={(e) => setFilterEntity(e.target.value)} style={selectStyle}>
-              <option value="">All entities</option>
-              {allEntities.map((e) => <option key={e} value={e}>{e}</option>)}
-            </select>
+            <SearchableSelect multi value={filterEntity} onChange={(v) => setFilterEntity(v as string[])} options={allEntities} allLabel="All entities" placeholder="Search entities…" />
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Folder</label>
-            <select value={filterFolder} onChange={(e) => setFilterFolder(e.target.value)} style={selectStyle}>
-              <option value="">All folders</option>
-              {allFolders.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
+            <SearchableSelect multi value={filterFolder} onChange={(v) => setFilterFolder(v as string[])} options={allFolders} allLabel="All folders" placeholder="Search folders…" />
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Tag</label>
-            <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)} style={selectStyle}>
-              <option value="">All tags</option>
-              {allTags.map((t) => <option key={t} value={t}>#{t}</option>)}
-            </select>
+            <SearchableSelect multi value={filterTag} onChange={(v) => setFilterTag(v as string[])} options={allTags} allLabel="All tags" placeholder="Search tags…" formatOption={(t) => `#${t}`} />
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Date range</label>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} style={{ ...selectStyle, flex: 1 }} />
+              <input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 12, background: '#fff', color: 'var(--color-text)', outline: 'none' }} />
               <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>to</span>
-              <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} style={{ ...selectStyle, flex: 1 }} />
+              <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 12, background: '#fff', color: 'var(--color-text)', outline: 'none' }} />
             </div>
           </div>
           {hasFilters && (
@@ -116,9 +106,9 @@ export default function SearchView() {
 
       {hasFilters && !filtersOpen && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-          {filterEntity && <Chip label={filterEntity} icon="entity" bg="var(--color-bg3)" onRemove={() => setFilterEntity('')} small />}
-          {filterFolder && <FolderChip path={filterFolder} small />}
-          {filterTag && <Chip label={`#${filterTag}`} icon="tag" bg="var(--color-bg3)" onRemove={() => setFilterTag('')} small />}
+          {filterEntity.map((e) => <Chip key={e} label={e} icon="entity" bg="var(--color-bg3)" onRemove={() => setFilterEntity((p) => p.filter((x) => x !== e))} small />)}
+          {filterFolder.map((f) => <FolderChip key={f} path={f} small />)}
+          {filterTag.map((t) => <Chip key={t} label={`#${t}`} icon="tag" bg="var(--color-bg3)" onRemove={() => setFilterTag((p) => p.filter((x) => x !== t))} small />)}
           {filterFrom && <Chip label={`From ${filterFrom}`} icon="clock" bg="var(--color-amber-light)" color="var(--color-amber)" onRemove={() => setFilterFrom('')} small />}
           {filterTo && <Chip label={`To ${filterTo}`} icon="clock" bg="var(--color-amber-light)" color="var(--color-amber)" onRemove={() => setFilterTo('')} small />}
         </div>

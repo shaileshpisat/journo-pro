@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Entry } from '@/lib/types'
+import { useState, useRef } from 'react'
+import { Entry, Comment } from '@/lib/types'
 import { fmtTime, fmtDate, fmtAmt } from '@/lib/formatters'
 import { isOverdue } from '@/lib/predicates'
 import { TimerState } from '@/lib/types'
@@ -19,6 +19,19 @@ interface EntryCardProps {
   onArchive?: (entry: Entry) => void
 }
 
+function fmtAge(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  return `${months}mo ago`
+}
+
 export default function EntryCard({
   entry,
   onClick,
@@ -31,7 +44,9 @@ export default function EntryCard({
   onArchive,
 }: EntryCardProps) {
   const [hovered, setHovered] = useState(false)
+  const [commentHovered, setCommentHovered] = useState(false)
   const amt = fmtAmt(entry.amount, entry.amountType)
+  const lastComment: Comment | undefined = entry.comments?.[entry.comments.length - 1]
 
   return (
     <div
@@ -139,6 +154,67 @@ export default function EntryCard({
               )}
             </button>
           )}
+          <div
+            onMouseEnter={() => setCommentHovered(true)}
+            onMouseLeave={() => setCommentHovered(false)}
+            style={{ position: 'relative' }}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onClick(entry)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '3px 4px',
+                color: hovered ? 'var(--color-text3)' : 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 3,
+                borderRadius: 4,
+                fontSize: 11,
+                fontFamily: "'DM Mono', monospace",
+              }}
+            >
+              <Icon name="messageSquare" size={12} />
+              {(entry.comments?.length ?? 0) > 0 && <span>{entry.comments.length}</span>}
+            </button>
+            {commentHovered && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  right: 0,
+                  marginBottom: 6,
+                  background: '#1a1a18',
+                  color: '#fff',
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                  fontSize: 11,
+                  lineHeight: 1.4,
+                  whiteSpace: 'nowrap',
+                  zIndex: 100,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                  pointerEvents: 'none',
+                }}
+              >
+                {lastComment ? (
+                  <>
+                    <div style={{ fontWeight: 500, marginBottom: 2 }}>{lastComment.text}</div>
+                    <div style={{ opacity: 0.6, fontFamily: "'DM Mono', monospace" }}>
+                      {new Date(lastComment.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      {' · '}
+                      {fmtAge(lastComment.timestamp)}
+                    </div>
+                  </>
+                ) : (
+                  <span style={{ opacity: 0.6 }}>No comments</span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6, alignItems: 'center' }}>

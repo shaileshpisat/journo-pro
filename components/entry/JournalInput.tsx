@@ -175,6 +175,7 @@ export default function JournalInput() {
       entity: parsed.entity || null,
       timeLogs: [],
         history: [],
+        comments: [],
         isTask: markTask,
       isTaskDone: false,
       archived: false,

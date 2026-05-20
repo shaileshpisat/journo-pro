@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react'
-import { AppState, Action, Entry, ViewName, EntryHistory } from '@/lib/types'
+import { AppState, Action, Entry, ViewName, EntryHistory, Comment } from '@/lib/types'
 import { SEED_ENTRIES } from '@/lib/seedData'
 
 function todayStr() {
@@ -119,6 +119,32 @@ function reducer(state: AppState, action: Action): AppState {
             ? { ...state.selectedEntry, archived: false, history: [...(state.selectedEntry.history || []), { timestamp: Date.now(), field: 'archived', oldValue: true, newValue: false }] }
             : state.selectedEntry,
       }
+    case 'ADD_COMMENT': {
+      const { entryId, comment } = action.payload
+      return {
+        ...state,
+        entries: state.entries.map((e) =>
+          e.id === entryId ? { ...e, comments: [...(e.comments || []), comment] } : e
+        ),
+        selectedEntry:
+          state.selectedEntry?.id === entryId
+            ? { ...state.selectedEntry, comments: [...(state.selectedEntry.comments || []), comment] }
+            : state.selectedEntry,
+      }
+    }
+    case 'DELETE_COMMENT': {
+      const { entryId, commentId } = action.payload
+      return {
+        ...state,
+        entries: state.entries.map((e) =>
+          e.id === entryId ? { ...e, comments: (e.comments || []).filter((c) => c.id !== commentId) } : e
+        ),
+        selectedEntry:
+          state.selectedEntry?.id === entryId
+            ? { ...state.selectedEntry, comments: (state.selectedEntry.comments || []).filter((c) => c.id !== commentId) }
+            : state.selectedEntry,
+      }
+    }
     default:
       return state
   }

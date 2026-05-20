@@ -137,6 +137,9 @@ const PATHS: Record<string, React.ReactNode> = {
     </>
   ),
   play: <path d="M5 3l9 5-9 5V3z" fill="currentColor" />,
+  messageSquare: (
+    <path d="M3 2H13C13.55 2 14 2.45 14 3V11C14 11.55 13.55 12 13 12H7L4 14V12H3C2.45 12 2 11.55 2 11V3C2 2.45 2.45 2 3 2Z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
+  ),
   square: (
     <rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
   ),

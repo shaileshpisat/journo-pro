@@ -1,4 +1,4 @@
-import { Entry } from './types'
+import { Entry, Comment } from './types'
 
 const today = new Date()
 const fmt = (d: Date) => d.toISOString().split('T')[0]
@@ -28,6 +28,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -44,6 +45,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -60,6 +62,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -76,6 +79,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -92,6 +96,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -108,6 +113,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: true,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -124,6 +130,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -140,6 +147,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: true,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -156,6 +164,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -172,6 +181,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -188,6 +198,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -204,6 +215,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -220,6 +232,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
   {
@@ -236,6 +249,7 @@ export const SEED_ENTRIES: Entry[] = [
     history: [],
     isTask: false,
     isTaskDone: false,
+    comments: [],
     archived: false,
   },
 ]
