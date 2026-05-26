@@ -1,7 +1,7 @@
 # JournoPro — Codebase Map
 
 > Reference document for feature development and bug fixes.
-> Last updated: 2026-05-20
+> Last updated: 2026-05-26
 
 ---
 
@@ -587,7 +587,14 @@ Props: `folderName: string`
 Shows all entries where `folderMatches(entry.folder, folderName)` — includes sub-folder entries. Shows inflow/outflow totals for the folder.
 
 #### `SettingsView.tsx`
-Read-only view of all entities, tags, and folders derived from entries. Tabbed interface. Each item shows usage count. (Edit/delete not wired — state vars present for future expansion.)
+Tabbed interface showing all entities, tags, and folders derived from entries — each with usage count, inline rename, and add-new capability.
+
+Includes a **Data** section below the tabs with three actions:
+- **Backup** — Downloads all localStorage data (`jp_entries`, `jp_view`, `jp_activeTimer`) as a dated JSON file via `<a>` click + `URL.createObjectURL`.
+- **Restore** — Hidden `<input type="file">` reads a JSON backup file, writes to localStorage, then reloads the page.
+- **Reset** — Double `window.confirm`, then clears all `jp_*` localStorage keys and reloads to seed data.
+
+A `statusMsg` state variable shows transient feedback (auto-clears after 3s).
 
 ---
 

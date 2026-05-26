@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { getAllFolderPaths } from '@/lib/folderUtils'
 import Icon from '@/components/ui/Icon'
@@ -11,6 +11,60 @@ export default function SettingsView() {
   const [tab, setTab] = useState<'entities' | 'tags' | 'folders'>('entities')
   const [editId, setEditId] = useState<string | null>(null)
   const [editVal, setEditVal] = useState('')
+  const [statusMsg, setStatusMsg] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleBackup = () => {
+    try {
+      const data = {
+        jp_entries: localStorage.getItem('jp_entries'),
+        jp_view: localStorage.getItem('jp_view'),
+        jp_activeTimer: localStorage.getItem('jp_activeTimer'),
+        backedUpAt: new Date().toISOString(),
+      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `journopro-backup-${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      setStatusMsg('Backup downloaded successfully.')
+      setTimeout(() => setStatusMsg(null), 3000)
+    } catch {
+      setStatusMsg('Backup failed.')
+      setTimeout(() => setStatusMsg(null), 3000)
+    }
+  }
+
+  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string)
+        if (data.jp_entries) localStorage.setItem('jp_entries', data.jp_entries)
+        if (data.jp_view) localStorage.setItem('jp_view', data.jp_view)
+        if (data.jp_activeTimer) localStorage.setItem('jp_activeTimer', data.jp_activeTimer)
+        window.location.reload()
+      } catch {
+        setStatusMsg('Invalid backup file.')
+        setTimeout(() => setStatusMsg(null), 3000)
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const handleReset = () => {
+    if (!window.confirm('This will permanently delete all your entries, settings, and timer data. Are you sure?')) return
+    if (!window.confirm('Really delete everything? This cannot be undone.')) return
+    localStorage.removeItem('jp_entries')
+    localStorage.removeItem('jp_view')
+    localStorage.removeItem('jp_activeTimer')
+    window.location.reload()
+  }
 
   const allEntities = [...new Set(entries.filter((e) => e.entity).map((e) => e.entity!))]
   const allTags = [...new Set(entries.flatMap((e) => e.tags))]
@@ -232,6 +286,71 @@ export default function SettingsView() {
             </div>
           )
         })}
+      </div>
+
+      {/* Data management */}
+      <div style={{ marginTop: 40 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>Data</h3>
+        <p style={{ fontSize: 13, color: 'var(--color-text3)', marginBottom: 16 }}>
+          Backup, restore, or reset your journal data.
+        </p>
+
+        <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden' }}>
+          {/* Backup */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--color-border)' }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>Backup data</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text3)' }}>Download all entries, settings, and timers as a JSON file.</div>
+            </div>
+            <button
+              onClick={handleBackup}
+              style={{ padding: '6px 14px', fontSize: 13, background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+            >
+              Download backup
+            </button>
+          </div>
+
+          {/* Restore */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--color-border)' }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>Restore data</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text3)' }}>Replace all current data with a backup file. The page will reload.</div>
+            </div>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              style={{ padding: '6px 14px', fontSize: 13, background: 'var(--color-bg3)', color: 'var(--color-text)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+            >
+              Choose file
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleRestore}
+              style={{ display: 'none' }}
+            />
+          </div>
+
+          {/* Reset */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 2, color: 'var(--color-red)' }}>Reset all data</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text3)' }}>Permanently delete everything and start fresh.</div>
+            </div>
+            <button
+              onClick={handleReset}
+              style={{ padding: '6px 14px', fontSize: 13, background: 'var(--color-red-light)', color: 'var(--color-red)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+
+        {statusMsg && (
+          <div style={{ marginTop: 12, padding: '8px 14px', fontSize: 13, background: 'var(--color-accent-light)', color: 'var(--color-accent)', borderRadius: 8 }}>
+            {statusMsg}
+          </div>
+        )}
       </div>
     </div>
   )
