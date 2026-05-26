@@ -174,6 +174,7 @@ export default function SearchView() {
               entry={e}
               onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
               overdue={isOverdue(e)}
+              currency={state.currency}
             />
           ))}
       </div>

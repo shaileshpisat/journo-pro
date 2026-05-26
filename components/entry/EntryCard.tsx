@@ -17,6 +17,7 @@ interface EntryCardProps {
   onTimerToggle?: (entry: Entry) => void
   onTaskToggle?: (entry: Entry) => void
   onArchive?: (entry: Entry) => void
+  currency?: string
 }
 
 function fmtAge(iso: string): string {
@@ -42,10 +43,11 @@ export default function EntryCard({
   onTimerToggle,
   onTaskToggle,
   onArchive,
+  currency = '$',
 }: EntryCardProps) {
   const [hovered, setHovered] = useState(false)
   const [commentHovered, setCommentHovered] = useState(false)
-  const amt = fmtAmt(entry.amount, entry.amountType)
+  const amt = fmtAmt(entry.amount, entry.amountType, currency)
   const lastComment: Comment | undefined = entry.comments?.[entry.comments.length - 1]
 
   return (

@@ -296,6 +296,31 @@ export default function SettingsView() {
         </p>
 
         <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden' }}>
+          {/* Currency */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--color-border)' }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>Currency</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text3)' }}>Select the currency symbol for all amounts.</div>
+            </div>
+            <select
+              value={state.currency}
+              onChange={(e) => dispatch({ type: 'SET_CURRENCY', payload: e.target.value as any })}
+              style={{
+                padding: '6px 10px', fontSize: 13, border: '1px solid var(--color-border)',
+                borderRadius: 6, outline: 'none', fontFamily: 'inherit',
+                background: 'var(--color-bg)', cursor: 'pointer',
+              }}
+            >
+              <option value="$">$ — US Dollar</option>
+              <option value="€">€ — Euro</option>
+              <option value="£">£ — British Pound</option>
+              <option value="₹">₹ — Indian Rupee</option>
+              <option value="¥">¥ — Yen / Yuan</option>
+              <option value="₽">₽ — Russian Ruble</option>
+              <option value="₩">₩ — South Korean Won</option>
+            </select>
+          </div>
+
           {/* Backup */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--color-border)' }}>
             <div>

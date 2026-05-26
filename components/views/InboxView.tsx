@@ -82,6 +82,7 @@ export default function InboxView() {
                     timerActive={activeTimer?.entryId === e.id}
                     onTimerToggle={handleTimerToggle}
                     onTaskToggle={handleTaskToggle}
+                    currency={state.currency}
                   />
                 </div>
               ))}
@@ -102,6 +103,7 @@ export default function InboxView() {
                 timerActive={activeTimer?.entryId === e.id}
                 onTimerToggle={handleTimerToggle}
                 onTaskToggle={handleTaskToggle}
+                currency={state.currency}
               />
             ))}
           </div>
@@ -121,6 +123,7 @@ export default function InboxView() {
                   timerActive={activeTimer?.entryId === e.id}
                   onTimerToggle={handleTimerToggle}
                   onTaskToggle={handleTaskToggle}
+                  currency={state.currency}
                 />
                 <button
                   onClick={() => dispatch({ type: 'SET_ADD_FOLDER_ENTRY', payload: e })}

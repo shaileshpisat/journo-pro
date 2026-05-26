@@ -38,7 +38,7 @@ export function fmtDate(iso: string | null): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-export function fmtAmt(amount: number | null, type: AmountType | null): { label: string; color: string } | null {
+export function fmtAmt(amount: number | null, type: AmountType | null, currency = '$'): { label: string; color: string } | null {
   if (amount === null) return null
   const sign = type === 'inflow' ? '+' : type === 'outflow' ? '−' : ''
   const color =
@@ -47,5 +47,5 @@ export function fmtAmt(amount: number | null, type: AmountType | null): { label:
       : type === 'outflow'
         ? 'var(--color-red)'
         : 'var(--color-text2)'
-  return { label: `${sign}$${amount.toLocaleString()}`, color }
+  return { label: `${sign}${currency}${amount.toLocaleString()}`, color }
 }

@@ -111,6 +111,7 @@ export default function TasksView() {
                 timerActive={activeTimer?.entryId === e.id}
                 onTimerToggle={handleTimerToggle}
                 onTaskToggle={handleTaskToggle}
+                currency={state.currency}
               />
             ))}
           </div>
@@ -134,6 +135,7 @@ export default function TasksView() {
                     timerActive={activeTimer?.entryId === e.id}
                     onTimerToggle={handleTimerToggle}
                     onTaskToggle={handleTaskToggle}
+                    currency={state.currency}
                   />
                 ))}
               </div>

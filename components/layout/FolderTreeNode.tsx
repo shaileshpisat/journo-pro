@@ -15,7 +15,7 @@ interface FolderTreeNodeProps {
 }
 
 export default function FolderTreeNode({ node, entries, depth = 0, variant = 'view' }: FolderTreeNodeProps) {
-  const { dispatch } = useAppState()
+  const { state, dispatch } = useAppState()
   const [open, setOpen] = useState(depth < 2)
   const [hovered, setHovered] = useState(false)
   const [showMove, setShowMove] = useState(false)
@@ -99,12 +99,12 @@ export default function FolderTreeNode({ node, entries, depth = 0, variant = 'vi
           <div style={{ textAlign: 'right' }}>
             {totalIn > 0 && (
               <div style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: 'var(--color-green)' }}>
-                +${totalIn.toLocaleString()}
+                {`+${state.currency}${totalIn.toLocaleString()}`}
               </div>
             )}
             {totalOut > 0 && (
               <div style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: 'var(--color-red)' }}>
-                −${totalOut.toLocaleString()}
+                {`−${state.currency}${totalOut.toLocaleString()}`}
               </div>
             )}
           </div>

@@ -144,7 +144,7 @@ export default function CalendarView() {
             }}>
               {dayEntries.length === 0 && <div style={{ height: 40 }} />}
               {dayEntries.map((e) => {
-                const amt = fmtAmt(e.amount, e.amountType)
+                const amt = fmtAmt(e.amount, e.amountType, state.currency)
                 const isAction = e.actionDate === fmt(day)
                 const overdue = isOverdue(e)
                 return (

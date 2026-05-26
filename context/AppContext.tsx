@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react'
-import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState } from '@/lib/types'
+import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState, CurrencySymbol } from '@/lib/types'
 import { SEED_ENTRIES } from '@/lib/seedData'
 
 function todayStr() {
@@ -15,6 +15,7 @@ const initialState: AppState = {
   sidebarCollapsed: false,
   activeTimer: null,
   addFolderEntry: null,
+  currency: '$' as CurrencySymbol,
 }
 
 function reducer(state: AppState, action: Action): AppState {
@@ -151,6 +152,8 @@ function reducer(state: AppState, action: Action): AppState {
             : state.selectedEntry,
       }
     }
+    case 'SET_CURRENCY':
+      return { ...state, currency: action.payload }
     default:
       return state
   }
@@ -192,6 +195,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'SET_TIMER', payload: parsed })
       }
     } catch {}
+    try {
+      const storedCurrency = window.localStorage.getItem('jp_currency') as CurrencySymbol | null
+      if (storedCurrency) dispatch({ type: 'SET_CURRENCY', payload: storedCurrency })
+    } catch {}
   }, [])
 
   // Persist entries
@@ -215,6 +222,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       window.localStorage.removeItem('jp_activeTimer')
     }
   }, [state.activeTimer])
+
+  // Persist currency
+  useEffect(() => {
+    if (!hydrated.current) return
+    window.localStorage.setItem('jp_currency', state.currency)
+  }, [state.currency])
 
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>
 }

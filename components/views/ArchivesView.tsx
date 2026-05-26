@@ -97,6 +97,7 @@ export default function ArchivesView() {
                 entry={e}
                 onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
                 onArchive={handleArchive}
+                currency={state.currency}
               />
             </div>
           ))}

@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { folderMatches } from '@/lib/folderUtils'
 import { Entry } from '@/lib/types'
 import { fmtDate } from '@/lib/formatters'
 import TodayTimeline, { HistoryRowData } from '@/components/entry/TodayTimeline'
+import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
 import Icon from '@/components/ui/Icon'
 
@@ -28,6 +29,10 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
   const { entries, activeTimer } = state
   const [tasksOnly, setTasksOnly] = useState(false)
   const [showChanges, setShowChanges] = useState(true)
+  const [filterTags, setFilterTags] = useState<string[]>([])
+  const [tagInput, setTagInput] = useState('')
+  const [tagSuggestOpen, setTagSuggestOpen] = useState(false)
+  const tagRef = useRef<HTMLDivElement>(null)
 
   const activeEntries = entries.filter((e) => !e.archived)
   const folderEntries = activeEntries.filter((e) => folderMatches(e.folder, folderName))
@@ -40,7 +45,36 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
     .filter((e) => e.amountType === 'outflow')
     .reduce((s, e) => s + (e.amount || 0), 0)
 
-  const dateGroups = useMemo(() => groupByDate(visibleEntries), [visibleEntries])
+  const allFolderTags = useMemo(
+    () => [...new Set(folderEntries.flatMap((e) => e.tags))].sort(),
+    [folderEntries]
+  )
+
+  const tagSuggestions = useMemo(
+    () =>
+      tagInput
+        ? allFolderTags.filter((t) => t.toLowerCase().includes(tagInput.toLowerCase()) && !filterTags.includes(t))
+        : allFolderTags.filter((t) => !filterTags.includes(t)),
+    [tagInput, allFolderTags, filterTags]
+  )
+
+  const taggedEntries = filterTags.length > 0
+    ? visibleEntries.filter((e) => filterTags.every((t) => e.tags.includes(t)))
+    : visibleEntries
+
+  const showTagSuggest = tagSuggestOpen && tagSuggestions.length > 0
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (tagRef.current && !tagRef.current.contains(e.target as Node)) {
+        setTagSuggestOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const dateGroups = useMemo(() => groupByDate(taggedEntries), [taggedEntries])
 
   const historyByDate = useMemo(() => {
     const map = new Map<string, HistoryRowData[]>()
@@ -82,12 +116,12 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {totalIn > 0 && (
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--color-green)' }}>
-              +${totalIn.toLocaleString()}
+              {`+${state.currency}${totalIn.toLocaleString()}`}
             </span>
           )}
           {totalOut > 0 && (
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--color-red)' }}>
-              −${totalOut.toLocaleString()}
+              {`−${state.currency}${totalOut.toLocaleString()}`}
             </span>
           )}
           <span style={{ fontSize: 13, color: 'var(--color-text3)' }}>
@@ -136,9 +170,106 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
         </div>
       </div>
 
-      {visibleEntries.length === 0 ? (
+      {/* Tag filter */}
+      {allFolderTags.length > 0 && (
+        <div ref={tagRef} style={{ position: 'relative', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {allFolderTags.map((t) => {
+              const active = filterTags.includes(t)
+              return (
+                <span
+                  key={t}
+                  onClick={() =>
+                    setFilterTags((p) => (active ? p.filter((x) => x !== t) : [...p, t]))
+                  }
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '2px 8px',
+                    borderRadius: 99,
+                    fontSize: 11,
+                    fontWeight: 500,
+                    color: active ? '#fff' : 'var(--color-text2)',
+                    background: active ? 'var(--color-accent)' : 'var(--color-bg3)',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    lineHeight: 1.6,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  #{t}
+                  {active && (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setFilterTags((p) => p.filter((x) => x !== t))
+                      }}
+                      style={{ cursor: 'pointer', opacity: 0.7, marginLeft: 1 }}
+                    >
+                      ×
+                    </span>
+                  )}
+                </span>
+              )
+            })}
+            <div style={{ position: 'relative', minWidth: 100 }}>
+              <input
+                value={tagInput}
+                onChange={(e) => { setTagInput(e.target.value); setTagSuggestOpen(true) }}
+                onFocus={() => setTagSuggestOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && tagSuggestions.length > 0) {
+                    const tag = tagSuggestions[0]
+                    if (!filterTags.includes(tag)) {
+                      setFilterTags((p) => [...p, tag])
+                      setTagInput('')
+                    }
+                  }
+                }}
+                placeholder="Add tag…"
+                style={{
+                  border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 12,
+                  background: 'transparent', color: 'var(--color-text)', width: '100%',
+                }}
+              />
+              {showTagSuggest && (
+                <div
+                  style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                    background: '#fff', border: '1px solid var(--color-border)',
+                    borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {tagSuggestions.map((t) => (
+                    <div
+                      key={t}
+                      onClick={() => {
+                        setFilterTags((p) => [...p, t])
+                        setTagInput('')
+                        setTagSuggestOpen(true)
+                      }}
+                      style={{
+                        padding: '7px 12px', fontSize: 12, cursor: 'pointer',
+                        color: 'var(--color-text)', fontFamily: "'DM Mono', monospace",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-bg2)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      #{t}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {taggedEntries.length === 0 ? (
         <p style={{ color: 'var(--color-text3)', fontSize: 14 }}>
-          {tasksOnly ? 'No tasks in this folder.' : 'No entries in this folder.'}
+          {tasksOnly ? 'No tasks' : 'No entries'}{filterTags.length > 0 ? ' match the selected tags.' : ' in this folder.'}
         </p>
       ) : (
         dateGroups.map(([dateKey, group]) => (
@@ -212,6 +343,7 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
               activeTimer={activeTimer}
               onTimerToggle={handleTimerToggle}
               onTaskToggle={handleTaskToggle}
+              currency={state.currency}
             />
           </div>
         ))

@@ -232,7 +232,7 @@ export default function EntryDetail() {
   const allEntities = [...new Set(state.entries.filter((e) => e.entity).map((e) => e.entity!))]
   const allMasterTags = [...new Set(state.entries.flatMap((e) => e.tags))]
   const allFolders = [...new Set(state.entries.filter((e) => e.folder).map((e) => e.folder!))]
-  const amt = fmtAmt(entry.amount, entry.amountType)
+  const amt = fmtAmt(entry.amount, entry.amountType, state.currency)
   const timerActive = state.activeTimer?.entryId === entry.id
 
   const save = () => {
@@ -539,10 +539,11 @@ export default function EntryDetail() {
                   <div key={c.id} style={{ padding: '8px 10px', background: 'var(--color-bg2)', borderRadius: 8 }}>
                     {isEditing ? (
                       <div>
-                        <input
+                        <textarea
                           value={editingCommentText}
                           onChange={(e) => setEditingCommentText(e.target.value)}
-                          style={{ ...fieldInputStyle, marginBottom: 6 }}
+                          style={{ ...fieldInputStyle, marginBottom: 6, resize: 'none' }}
+                          rows={3}
                           autoFocus
                         />
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -567,7 +568,7 @@ export default function EntryDetail() {
                       </div>
                     ) : (
                       <>
-                        <div style={{ fontSize: 12, color: 'var(--color-text)', lineHeight: 1.45, marginBottom: 4 }}>
+                        <div style={{ fontSize: 12, color: 'var(--color-text)', lineHeight: 1.45, marginBottom: 4, whiteSpace: 'pre-wrap' }}>
                           {c.text}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -596,12 +597,13 @@ export default function EntryDetail() {
           </div>
 
           <div style={{ display: 'flex', gap: 6 }}>
-            <input
+            <textarea
               value={commentInput}
               onChange={(e) => setCommentInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && commentInput.trim()) handleAddComment() }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && commentInput.trim()) { e.preventDefault(); handleAddComment() } }}
               placeholder="Add a comment..."
-              style={{ ...fieldInputStyle, flex: 1 }}
+              style={{ ...fieldInputStyle, flex: 1, resize: 'none' }}
+              rows={2}
             />
             <button
               onClick={handleAddComment}
@@ -627,8 +629,8 @@ export default function EntryDetail() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {[...entry.history].reverse().map((h, i) => {
-                const fmtOld = h.field === 'amount' ? fmtAmt(Number(h.oldValue), entry.amountType)?.label : String(h.oldValue ?? '—')
-                const fmtNew = h.field === 'amount' ? fmtAmt(Number(h.newValue), entry.amountType)?.label : String(h.newValue ?? '—')
+                const fmtOld = h.field === 'amount' ? fmtAmt(Number(h.oldValue), entry.amountType, state.currency)?.label : String(h.oldValue ?? '—')
+                const fmtNew = h.field === 'amount' ? fmtAmt(Number(h.newValue), entry.amountType, state.currency)?.label : String(h.newValue ?? '—')
                 const fieldLabel = h.field === 'actionDate' ? 'Action date' : h.field === 'amountType' ? 'Amount type' : h.field === 'commentAdded' ? 'Comment added' : h.field === 'commentEdited' ? 'Comment edited' : h.field.charAt(0).toUpperCase() + h.field.slice(1)
                 return (
                   <div key={i} style={{ padding: '5px 8px', background: 'var(--color-bg2)', borderRadius: 6 }}>

@@ -326,6 +326,7 @@ export default function HomeView() {
             activeTimer={activeTimer}
             onTimerToggle={handleTimerToggle}
             onTaskToggle={handleTaskToggle}
+            currency={state.currency}
           />
         </div>
       )}
@@ -353,6 +354,7 @@ export default function HomeView() {
                 timerActive={activeTimer?.entryId === e.id}
                 onTimerToggle={handleTimerToggle}
                 onTaskToggle={handleTaskToggle}
+                currency={state.currency}
               />
             ))}
           </div>
@@ -385,6 +387,7 @@ export default function HomeView() {
                     timerActive={activeTimer?.entryId === e.id}
                     onTimerToggle={handleTimerToggle}
                     onTaskToggle={handleTaskToggle}
+                    currency={state.currency}
                   />
                 </div>
               ))}

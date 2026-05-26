@@ -1,7 +1,7 @@
 # JournoPro — Codebase Map
 
 > Reference document for feature development and bug fixes.
-> Last updated: 2026-05-26
+> Last updated: 2026-05-27
 
 ---
 
@@ -155,6 +155,12 @@ interface FolderNode {
 }
 ```
 
+### `CurrencySymbol` — available currency symbols
+
+```ts
+type CurrencySymbol = '$' | '€' | '£' | '₹' | '¥' | '₽' | '₩'
+```
+
 ### `TimerState` — active timer
 
 ```ts
@@ -184,8 +190,9 @@ type ViewName =
 
 ```ts
 {
-  entries: Entry[]         // All journal entries
-  view: ViewName           // Active view
+  entries: Entry[]              // All journal entries
+  currency: CurrencySymbol      // '$' | '€' | '£' | '₹' | '¥' | '₽' | '₩'
+  view: ViewName                // Active view
   selectedEntry: Entry | null   // Opens EntryDetail overlay
   sidebarCollapsed: boolean
   activeTimer: TimerState | null
@@ -209,11 +216,12 @@ type ViewName =
 | `MOVE_FOLDER` | `{ oldPath, newPath }` | Rename folder path on all matching entries |
 | `ADD_COMMENT` | `{ entryId: number, comment: Comment }` | Append comment to entry.comments; records `commentAdded` in history |
 | `EDIT_COMMENT` | `{ entryId: number, commentId: number, text: string }` | Update comment text by id; records `commentEdited` in history |
+| `SET_CURRENCY` | `CurrencySymbol` | Update currency symbol used for all amount displays |
 
 ### localStorage sync
 
-- On **mount**: reads `jp_entries`, `jp_view`, and `jp_activeTimer` once via `useEffect` + `useRef` guard.
-- On **state change**: `useEffect` watching `state.entries` → saves to `jp_entries`; same for `state.view` and `state.activeTimer`.
+- On **mount**: reads `jp_entries`, `jp_view`, `jp_activeTimer`, and `jp_currency` once via `useEffect` + `useRef` guard.
+- On **state change**: `useEffect` watching `state.entries` → saves to `jp_entries`; same for `state.view`, `state.activeTimer`, and `state.currency`.
 - **Seed data**: If localStorage is empty, `SEED_ENTRIES` is used as initial state.
 
 ### Consuming state in components
@@ -352,9 +360,10 @@ Regex-based natural language parser. Extracts from raw text:
 ```ts
 fmtTime(iso: string): string           // "9:14 AM"
 fmtDate(iso: string | null): string   // "Today" | "Tomorrow" | "Yesterday" | "Monday" | "Apr 21"
-fmtAmt(amount, type): { label, color } | null  // "+$4,500" in green or "−$312" in red
+fmtAmt(amount, type, currency?): { label, color } | null  // "+$4,500" in green or "−€312" in red; defaults to '$'
 ```
 Colors returned by `fmtAmt` are CSS variable strings (e.g., `'var(--color-green)'`).
+Accepts an optional third `currency` parameter — all callers pass `state.currency`.
 
 #### `src/lib/predicates.ts`
 ```ts
@@ -487,7 +496,7 @@ Edit mode toggle changes:
 
 Save dispatches `UPDATE_ENTRY`. Back button dispatches `SELECT_ENTRY(null)`.
 
-Comments section at bottom: lists existing comments (newest first) with delete button on each, plus an inline input + Add button to post new comments. Comments dispatch `ADD_COMMENT` / `DELETE_COMMENT`.
+Comments section at bottom: lists existing comments (newest first) with delete button on each, plus an inline textarea + Add button to post new comments (Ctrl+Enter to submit, Enter for newline). Edit uses textarea instead of input. Comment text preserves newlines via `white-space: pre-wrap`. Comments dispatch `ADD_COMMENT` / `DELETE_COMMENT`.
 
 ---
 
@@ -584,12 +593,13 @@ Renders `buildFolderTree(entries)` as a list of `<FolderTreeNode depth=0>`.
 #### `FolderDetailView.tsx`
 Props: `folderName: string`
 
-Shows all entries where `folderMatches(entry.folder, folderName)` — includes sub-folder entries. Groups entries by date (descending) and renders each day as an hourly `TodayTimeline` with history items. Includes a Tasks toggle switch to filter entries to only tasks. Shows inflow/outflow totals and entry count for the folder. Empty state message changes based on filter ("No tasks in this folder." vs "No entries in this folder.").
+Shows all entries where `folderMatches(entry.folder, folderName)` — includes sub-folder entries. Groups entries by date (descending) and renders each day as an hourly `TodayTimeline` with history items. Includes a Tasks toggle switch and a tag filter bar with typeahead suggestions and removable pill chips. Shows inflow/outflow totals and entry count for the folder.
 
 #### `SettingsView.tsx`
 Tabbed interface showing all entities, tags, and folders derived from entries — each with usage count, inline rename, and add-new capability.
 
-Includes a **Data** section below the tabs with three actions:
+Includes a **Data** section below the tabs with a currency selector and three data actions:
+- **Currency** — `<select>` dropdown dispatching `SET_CURRENCY` with one of `$ € £ ₹ ¥ ₽ ₩`.
 - **Backup** — Downloads all localStorage data (`jp_entries`, `jp_view`, `jp_activeTimer`) as a dated JSON file via `<a>` click + `URL.createObjectURL`.
 - **Restore** — Hidden `<input type="file">` reads a JSON backup file, writes to localStorage, then reloads the page.
 - **Reset** — Double `window.confirm`, then clears all `jp_*` localStorage keys and reloads to seed data.
@@ -719,5 +729,6 @@ style={{ color: 'var(--color-accent)', background: 'var(--color-accent-light)' }
 | `jp_entries` | `Entry[]` JSON | All journal entries |
 | `jp_view` | `string` | Last active view name |
 | `jp_activeTimer` | `TimerState` JSON | Active timer (persists across refresh) |
+| `jp_currency` | `string` | Selected currency symbol (`$`, `€`, `£`, etc.) |
 
 Written by `AppContext.tsx` via `useEffect`. Read once on mount via hydration guard (`useRef`). On first visit (empty localStorage), `SEED_ENTRIES` from `src/lib/seedData.ts` is used.

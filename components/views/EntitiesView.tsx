@@ -112,12 +112,12 @@ export default function EntitiesView() {
         <div style={{ display: 'flex', gap: 12 }}>
           {totalIn > 0 && (
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--color-green)' }}>
-              +${totalIn.toLocaleString()}
+              {`+${state.currency}${totalIn.toLocaleString()}`}
             </span>
           )}
           {totalOut > 0 && (
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--color-red)' }}>
-              −${totalOut.toLocaleString()}
+              {`−${state.currency}${totalOut.toLocaleString()}`}
             </span>
           )}
           <span style={{ fontSize: 13, color: 'var(--color-text3)' }}>
@@ -138,6 +138,7 @@ export default function EntitiesView() {
             timerActive={activeTimer?.entryId === e.id}
             onTimerToggle={handleTimerToggle}
             onTaskToggle={handleTaskToggle}
+            currency={state.currency}
           />
         ))}
       </div>

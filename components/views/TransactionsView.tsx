@@ -151,7 +151,7 @@ export default function TransactionsView() {
               color: 'var(--color-green)',
             }}
           >
-            +${totalInflow.toLocaleString()}
+            {`+${state.currency}${totalInflow.toLocaleString()}`}
           </div>
         </div>
         <div
@@ -171,7 +171,7 @@ export default function TransactionsView() {
               color: 'var(--color-red)',
             }}
           >
-            −${totalOutflow.toLocaleString()}
+            {`−${state.currency}${totalOutflow.toLocaleString()}`}
           </div>
         </div>
         <div
@@ -191,7 +191,7 @@ export default function TransactionsView() {
               color: net >= 0 ? 'var(--color-green)' : 'var(--color-red)',
             }}
           >
-            {net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()}
+            {`${net >= 0 ? '+' : '−'}${state.currency}${Math.abs(net).toLocaleString()}`}
           </div>
         </div>
       </div>
@@ -226,10 +226,10 @@ export default function TransactionsView() {
                   <SectionHead title={fmtDate(dateKey)} count={dateEntries.length} />
                   <div style={{ display: 'flex', gap: 12, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
                     {dateIn > 0 && (
-                      <span style={{ color: 'var(--color-green)' }}>+${dateIn.toLocaleString()}</span>
+                      <span style={{ color: 'var(--color-green)' }}>{`+${state.currency}${dateIn.toLocaleString()}`}</span>
                     )}
                     {dateOut > 0 && (
-                      <span style={{ color: 'var(--color-red)' }}>−${dateOut.toLocaleString()}</span>
+                      <span style={{ color: 'var(--color-red)' }}>{`−${state.currency}${dateOut.toLocaleString()}`}</span>
                     )}
                   </div>
                 </div>
@@ -242,6 +242,7 @@ export default function TransactionsView() {
                       timerActive={activeTimer?.entryId === e.id}
                       onTimerToggle={handleTimerToggle}
                       onTaskToggle={handleTaskToggle}
+                      currency={state.currency}
                     />
                   ))}
                 </div>
@@ -277,10 +278,10 @@ export default function TransactionsView() {
                 <SectionHead title={folderKey} count={folderEntries.length} />
                 <div style={{ display: 'flex', gap: 12, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
                   {folderIn > 0 && (
-                    <span style={{ color: 'var(--color-green)' }}>+${folderIn.toLocaleString()}</span>
+                    <span style={{ color: 'var(--color-green)' }}>{`+${state.currency}${folderIn.toLocaleString()}`}</span>
                   )}
                   {folderOut > 0 && (
-                    <span style={{ color: 'var(--color-red)' }}>−${folderOut.toLocaleString()}</span>
+                    <span style={{ color: 'var(--color-red)' }}>{`−${state.currency}${folderOut.toLocaleString()}`}</span>
                   )}
                 </div>
               </div>
@@ -293,6 +294,7 @@ export default function TransactionsView() {
                     timerActive={activeTimer?.entryId === e.id}
                     onTimerToggle={handleTimerToggle}
                     onTaskToggle={handleTaskToggle}
+                    currency={state.currency}
                   />
                 ))}
               </div>

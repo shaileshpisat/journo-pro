@@ -1,5 +1,7 @@
 export type AmountType = 'inflow' | 'outflow'
 
+export type CurrencySymbol = '$' | '€' | '£' | '₹' | '¥' | '₽' | '₩'
+
 export interface TimeLog {
   startedAt: number
   duration: number
@@ -69,6 +71,7 @@ export interface AppState {
   sidebarCollapsed: boolean
   activeTimer: TimerState | null
   addFolderEntry: Entry | null
+  currency: CurrencySymbol
 }
 
 export type Action =
@@ -89,3 +92,4 @@ export type Action =
   | { type: 'RESTORE_ENTRY'; payload: number }
   | { type: 'ADD_COMMENT'; payload: { entryId: number; comment: Comment } }
   | { type: 'EDIT_COMMENT'; payload: { entryId: number; commentId: number; text: string } }
+  | { type: 'SET_CURRENCY'; payload: CurrencySymbol }

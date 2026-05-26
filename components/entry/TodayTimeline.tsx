@@ -17,6 +17,7 @@ interface TodayTimelineProps {
   activeTimer?: TimerState | null
   onTimerToggle?: (entry: Entry) => void
   onTaskToggle?: (entry: Entry) => void
+  currency?: string
 }
 
 function fmtHistField(field: string): string {
@@ -37,9 +38,9 @@ function fmtHistField(field: string): string {
   return map[field] || field
 }
 
-function fmtHistValue(field: string, val: unknown): string {
+function fmtHistValue(field: string, val: unknown, currency = '$'): string {
   if (val === null || val === undefined) return '—'
-  if (field === 'amount') return `$${Number(val).toLocaleString()}`
+  if (field === 'amount') return `${currency}${Number(val).toLocaleString()}`
   if (field === 'amountType') return val as string
   if (field === 'isTask') return val ? 'yes' : 'no'
   if (field === 'isTaskDone') return val ? 'done' : 'undone'
@@ -49,7 +50,7 @@ function fmtHistValue(field: string, val: unknown): string {
   return String(val).slice(0, 50)
 }
 
-function HistoryRow({ history, entryText, timestamp }: { history: EntryHistory; entryText: string; timestamp: number }) {
+function HistoryRow({ history, entryText, timestamp, currency = '$' }: { history: EntryHistory; entryText: string; timestamp: number; currency?: string }) {
   return (
     <div style={{
       background: 'transparent',
@@ -75,16 +76,16 @@ function HistoryRow({ history, entryText, timestamp }: { history: EntryHistory; 
           {new Date(timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
         </span>
         <span style={{ color: 'var(--color-text3)', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
-          {fmtHistValue(history.field, history.oldValue)}
+          {fmtHistValue(history.field, history.oldValue, currency)}
           <span style={{ margin: '0 4px', color: 'var(--color-accent)' }}>→</span>
-          {fmtHistValue(history.field, history.newValue)}
+          {fmtHistValue(history.field, history.newValue, currency)}
         </span>
       </div>
     </div>
   )
 }
 
-export default function TodayTimeline({ entries, historyItems, onClick, activeTimer, onTimerToggle, onTaskToggle }: TodayTimelineProps) {
+export default function TodayTimeline({ entries, historyItems, onClick, activeTimer, onTimerToggle, onTaskToggle, currency = '$' }: TodayTimelineProps) {
   const sorted = [...entries].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
   const byHour: Record<number, Entry[]> = {}
   sorted.forEach((e) => {
@@ -151,7 +152,7 @@ export default function TodayTimeline({ entries, historyItems, onClick, activeTi
           </div>
           <div style={{ flex: 1, paddingBottom: 14 }}>
             {byHour[h]?.map((e) => {
-              const amt = fmtAmt(e.amount, e.amountType)
+              const amt = fmtAmt(e.amount, e.amountType, currency)
               const isActive = activeTimer?.entryId === e.id
               return (
                 <div
@@ -263,7 +264,7 @@ export default function TodayTimeline({ entries, historyItems, onClick, activeTi
               )
             })}
             {histByHour[h]?.map((item, i) => (
-              <HistoryRow key={`h-${i}`} history={item.history} entryText={item.entryText} timestamp={item.timestamp} />
+              <HistoryRow key={`h-${i}`} history={item.history} entryText={item.entryText} timestamp={item.timestamp} currency={currency} />
             ))}
           </div>
         </div>

@@ -351,7 +351,7 @@ export default function JournalInput() {
             {parsed.amount && (
               <Chip
                 icon="amount"
-                label={`${parsed.amountType === 'inflow' ? '+' : parsed.amountType === 'outflow' ? '−' : ''}$${parsed.amount.toLocaleString()}`}
+                label={`${parsed.amountType === 'inflow' ? '+' : parsed.amountType === 'outflow' ? '−' : ''}${state.currency}${parsed.amount.toLocaleString()}`}
                 bg={
                   parsed.amountType === 'inflow'
                     ? 'var(--color-green-light)'
