@@ -5,7 +5,7 @@ import { useAppState } from '@/context/AppContext'
 import { folderMatches } from '@/lib/folderUtils'
 import { Entry } from '@/lib/types'
 import { fmtDate } from '@/lib/formatters'
-import TodayTimeline, { HistoryRowData } from '@/components/entry/TodayTimeline'
+import TodayTimeline, { HistoryRowData, TimeLogRowData } from '@/components/entry/TodayTimeline'
 import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
 import Icon from '@/components/ui/Icon'
@@ -29,6 +29,7 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
   const { entries, activeTimer } = state
   const [tasksOnly, setTasksOnly] = useState(false)
   const [showChanges, setShowChanges] = useState(true)
+  const [showTimeTracking, setShowTimeTracking] = useState(true)
   const [filterTags, setFilterTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [tagSuggestOpen, setTagSuggestOpen] = useState(false)
@@ -45,17 +46,20 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
     .filter((e) => e.amountType === 'outflow')
     .reduce((s, e) => s + (e.amount || 0), 0)
 
-  const allFolderTags = useMemo(
-    () => [...new Set(folderEntries.flatMap((e) => e.tags))].sort(),
-    [folderEntries]
-  )
+  const folderTagCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    folderEntries.forEach((e) => e.tags.forEach((t) => counts.set(t, (counts.get(t) || 0) + 1)))
+    return [...counts.entries()]
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => a.tag.localeCompare(b.tag))
+  }, [folderEntries])
 
   const tagSuggestions = useMemo(
     () =>
       tagInput
-        ? allFolderTags.filter((t) => t.toLowerCase().includes(tagInput.toLowerCase()) && !filterTags.includes(t))
-        : allFolderTags.filter((t) => !filterTags.includes(t)),
-    [tagInput, allFolderTags, filterTags]
+        ? folderTagCounts.filter((t) => t.tag.toLowerCase().includes(tagInput.toLowerCase()) && !filterTags.includes(t.tag))
+        : folderTagCounts.filter((t) => !filterTags.includes(t.tag)),
+    [tagInput, folderTagCounts, filterTags]
   )
 
   const taggedEntries = filterTags.length > 0
@@ -74,8 +78,6 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const dateGroups = useMemo(() => groupByDate(taggedEntries), [taggedEntries])
-
   const historyByDate = useMemo(() => {
     const map = new Map<string, HistoryRowData[]>()
     folderEntries.forEach((e) => {
@@ -91,6 +93,34 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
     }
     return map
   }, [folderEntries])
+
+  const timeTrackingByDate = useMemo(() => {
+    const map = new Map<string, TimeLogRowData[]>()
+    folderEntries.forEach((e) => {
+      if (!e.timeLogs) return
+      e.timeLogs.forEach((log) => {
+        const dateKey = new Date(log.startedAt).toISOString().split('T')[0]
+        if (!map.has(dateKey)) map.set(dateKey, [])
+        map.get(dateKey)!.push({ entryText: e.text, entryId: e.id, ...log })
+      })
+    })
+    for (const items of map.values()) {
+      items.sort((a, b) => a.startedAt - b.startedAt)
+    }
+    return map
+  }, [folderEntries])
+
+  const dateGroups = useMemo(() => groupByDate(taggedEntries), [taggedEntries])
+
+  const totalHistoryCount = useMemo(
+    () => [...historyByDate.values()].reduce((s, items) => s + items.length, 0),
+    [historyByDate]
+  )
+
+  const totalTimeTrackingCount = useMemo(
+    () => [...timeTrackingByDate.values()].reduce((s, items) => s + items.length, 0),
+    [timeTrackingByDate]
+  )
 
   const handleTimerToggle = (entry: Entry) => {
     if (activeTimer?.entryId === entry.id) {
@@ -171,16 +201,16 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
       </div>
 
       {/* Tag filter */}
-      {allFolderTags.length > 0 && (
+      {folderTagCounts.length > 0 && (
         <div ref={tagRef} style={{ position: 'relative', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            {allFolderTags.map((t) => {
-              const active = filterTags.includes(t)
+            {folderTagCounts.map(({ tag, count }) => {
+              const active = filterTags.includes(tag)
               return (
                 <span
-                  key={t}
+                  key={tag}
                   onClick={() =>
-                    setFilterTags((p) => (active ? p.filter((x) => x !== t) : [...p, t]))
+                    setFilterTags((p) => (active ? p.filter((x) => x !== tag) : [...p, tag]))
                   }
                   style={{
                     display: 'inline-flex',
@@ -198,12 +228,24 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
                     transition: 'all 0.15s',
                   }}
                 >
-                  #{t}
+                  #{tag}
+                  <span
+                    style={{
+                      fontFamily: "'DM Mono', monospace",
+                      fontSize: 9,
+                      lineHeight: 1,
+                      padding: '1px 4px',
+                      borderRadius: 4,
+                      background: active ? 'rgba(255,255,255,0.2)' : 'var(--color-bg2)',
+                    }}
+                  >
+                    {count}
+                  </span>
                   {active && (
                     <span
                       onClick={(e) => {
                         e.stopPropagation()
-                        setFilterTags((p) => p.filter((x) => x !== t))
+                        setFilterTags((p) => p.filter((x) => x !== tag))
                       }}
                       style={{ cursor: 'pointer', opacity: 0.7, marginLeft: 1 }}
                     >
@@ -220,7 +262,7 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
                 onFocus={() => setTagSuggestOpen(true)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && tagSuggestions.length > 0) {
-                    const tag = tagSuggestions[0]
+                    const { tag } = tagSuggestions[0]
                     if (!filterTags.includes(tag)) {
                       setFilterTags((p) => [...p, tag])
                       setTagInput('')
@@ -242,11 +284,11 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
                     overflow: 'hidden',
                   }}
                 >
-                  {tagSuggestions.map((t) => (
+                  {tagSuggestions.map(({ tag, count }) => (
                     <div
-                      key={t}
+                      key={tag}
                       onClick={() => {
-                        setFilterTags((p) => [...p, t])
+                        setFilterTags((p) => [...p, tag])
                         setTagInput('')
                         setTagSuggestOpen(true)
                       }}
@@ -257,7 +299,16 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
                       onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-bg2)'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
-                      #{t}
+                      #<span style={{ fontWeight: 500 }}>{tag}</span>{' '}
+                      <span
+                        style={{
+                          fontFamily: "'DM Mono', monospace",
+                          fontSize: 9,
+                          opacity: 0.5,
+                        }}
+                      >
+                        {count}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -272,81 +323,129 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
           {tasksOnly ? 'No tasks' : 'No entries'}{filterTags.length > 0 ? ' match the selected tags.' : ' in this folder.'}
         </p>
       ) : (
-        dateGroups.map(([dateKey, group]) => (
-          <div key={dateKey} style={{ marginBottom: 32 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: 'var(--color-text2)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.07em',
-                }}
-              >
-                {fmtDate(dateKey)}
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)' }}>
-                {group.length} {group.length === 1 ? 'entry' : 'entries'}
-              </span>
-              {(historyByDate.get(dateKey)?.length ?? 0) > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)' }}>
-                  {historyByDate.get(dateKey)!.length} changes
-                </span>
-              )}
-              {(historyByDate.get(dateKey)?.length ?? 0) > 0 && (
-                <span
-                  onClick={() => setShowChanges((v) => !v)}
-                  style={{
-                    marginLeft: 'auto',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: 'var(--color-text3)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    userSelect: 'none',
-                  }}
-                >
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            {(totalHistoryCount > 0 || totalTimeTrackingCount > 0) && (
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+                {totalHistoryCount > 0 && (
                   <span
+                    onClick={() => setShowChanges((v) => !v)}
                     style={{
-                      width: 28,
-                      height: 14,
-                      borderRadius: 99,
-                      background: showChanges ? 'var(--color-accent)' : 'var(--color-bg3)',
-                      position: 'relative',
-                      transition: 'background 0.15s',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--color-text3)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      userSelect: 'none',
                     }}
                   >
                     <span
                       style={{
-                        position: 'absolute',
-                        top: 2,
-                        left: showChanges ? 16 : 2,
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        background: '#fff',
-                        transition: 'left 0.15s',
+                        width: 28,
+                        height: 14,
+                        borderRadius: 99,
+                        background: showChanges ? 'var(--color-accent)' : 'var(--color-bg3)',
+                        position: 'relative',
+                        transition: 'background 0.15s',
                       }}
-                    />
+                    >
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: 2,
+                          left: showChanges ? 16 : 2,
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: '#fff',
+                          transition: 'left 0.15s',
+                        }}
+                      />
+                    </span>
+                    Changes
                   </span>
-                  Changes
-                </span>
-              )}
-            </div>
-            <TodayTimeline
-              entries={group}
-              historyItems={showChanges ? historyByDate.get(dateKey) : undefined}
-              onClick={(e) => dispatch({ type: 'SELECT_ENTRY', payload: e })}
-              activeTimer={activeTimer}
-              onTimerToggle={handleTimerToggle}
-              onTaskToggle={handleTaskToggle}
-              currency={state.currency}
-            />
+                )}
+                {totalTimeTrackingCount > 0 && (
+                  <span
+                    onClick={() => setShowTimeTracking((v) => !v)}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--color-text3)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      userSelect: 'none',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 28,
+                        height: 14,
+                        borderRadius: 99,
+                        background: showTimeTracking ? 'var(--color-accent)' : 'var(--color-bg3)',
+                        position: 'relative',
+                        transition: 'background 0.15s',
+                      }}
+                    >
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: 2,
+                          left: showTimeTracking ? 16 : 2,
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: '#fff',
+                          transition: 'left 0.15s',
+                        }}
+                      />
+                    </span>
+                    Time
+                  </span>
+                )}
+              </div>
+            )}
           </div>
-        ))
+          {dateGroups.map(([dateKey, group]) => (
+            <div key={dateKey} style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'var(--color-text2)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.07em',
+                  }}
+                >
+                  {fmtDate(dateKey)}
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)' }}>
+                  {group.length} {group.length === 1 ? 'entry' : 'entries'}
+                </span>
+                {(historyByDate.get(dateKey)?.length ?? 0) > 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)' }}>
+                    {historyByDate.get(dateKey)!.length} changes
+                  </span>
+                )}
+              </div>
+              <TodayTimeline
+                entries={group}
+                historyItems={showChanges ? historyByDate.get(dateKey) : undefined}
+                timeTrackingItems={showTimeTracking ? timeTrackingByDate.get(dateKey) : []}
+                onClick={(e) => dispatch({ type: 'SELECT_ENTRY', payload: e })}
+                activeTimer={activeTimer}
+                onTimerToggle={handleTimerToggle}
+                onTaskToggle={handleTaskToggle}
+                currency={state.currency}
+              />
+            </div>
+          ))}
+        </>
       )}
     </div>
   )

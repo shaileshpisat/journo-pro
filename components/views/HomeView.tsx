@@ -7,7 +7,7 @@ import { fmtAmt } from '@/lib/formatters'
 import { EntryHistory } from '@/lib/types'
 import JournalInput from '@/components/entry/JournalInput'
 import EntryCard from '@/components/entry/EntryCard'
-import TodayTimeline from '@/components/entry/TodayTimeline'
+import TodayTimeline, { TimeLogRowData } from '@/components/entry/TodayTimeline'
 import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
 import SectionHead from '@/components/ui/SectionHead'
@@ -20,6 +20,7 @@ export default function HomeView() {
   const { state, dispatch } = useAppState()
   const { entries, activeTimer } = state
   const [showChanges, setShowChanges] = useState(true)
+  const [showTimeTracking, setShowTimeTracking] = useState(true)
   const actionTodayRef = useRef<HTMLDivElement>(null)
   const needsActionRef = useRef<HTMLDivElement>(null)
 
@@ -51,6 +52,20 @@ export default function HomeView() {
       })
     })
     return items.sort((a, b) => a.timestamp - b.timestamp)
+  }, [state.entries])
+
+  const todayTimeTracking = useMemo(() => {
+    const today = todayStr()
+    const items: TimeLogRowData[] = []
+    state.entries.forEach((e) => {
+      if (!e.timeLogs) return
+      e.timeLogs.forEach((log) => {
+        if (new Date(log.startedAt).toISOString().split('T')[0] === today) {
+          items.push({ entryText: e.text, entryId: e.id, ...log })
+        }
+      })
+    })
+    return items.sort((a, b) => a.startedAt - b.startedAt)
   }, [state.entries])
 
   const handleTimerToggle = (entry: import('@/lib/types').Entry) => {
@@ -253,7 +268,7 @@ export default function HomeView() {
       )}
 
       {/* Today timeline */}
-      {(todayEntries.length > 0 || todayHistory.length > 0) && (
+      {(todayEntries.length > 0 || todayHistory.length > 0 || todayTimeTracking.length > 0) && (
         <div style={{ marginTop: 32 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
             <span
@@ -277,51 +292,93 @@ export default function HomeView() {
                 {todayHistory.length} {todayHistory.length === 1 ? 'change' : 'changes'}
               </span>
             )}
-            {todayHistory.length > 0 && (
-              <span
-                onClick={() => setShowChanges((v) => !v)}
-                style={{
-                  marginLeft: 'auto',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: 'var(--color-text3)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  userSelect: 'none',
-                }}
-              >
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+              {todayHistory.length > 0 && (
                 <span
+                  onClick={() => setShowChanges((v) => !v)}
                   style={{
-                    width: 28,
-                    height: 14,
-                    borderRadius: 99,
-                    background: showChanges ? 'var(--color-accent)' : 'var(--color-bg3)',
-                    position: 'relative',
-                    transition: 'background 0.15s',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--color-text3)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    userSelect: 'none',
                   }}
                 >
                   <span
                     style={{
-                      position: 'absolute',
-                      top: 2,
-                      left: showChanges ? 16 : 2,
-                      width: 10,
-                      height: 10,
-                      borderRadius: '50%',
-                      background: '#fff',
-                      transition: 'left 0.15s',
+                      width: 28,
+                      height: 14,
+                      borderRadius: 99,
+                      background: showChanges ? 'var(--color-accent)' : 'var(--color-bg3)',
+                      position: 'relative',
+                      transition: 'background 0.15s',
                     }}
-                  />
+                  >
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 2,
+                        left: showChanges ? 16 : 2,
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        background: '#fff',
+                        transition: 'left 0.15s',
+                      }}
+                    />
+                  </span>
+                  Changes
                 </span>
-                Changes
-              </span>
-            )}
+              )}
+              {todayTimeTracking.length > 0 && (
+                <span
+                  onClick={() => setShowTimeTracking((v) => !v)}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--color-text3)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    userSelect: 'none',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 28,
+                      height: 14,
+                      borderRadius: 99,
+                      background: showTimeTracking ? 'var(--color-accent)' : 'var(--color-bg3)',
+                      position: 'relative',
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 2,
+                        left: showTimeTracking ? 16 : 2,
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        background: '#fff',
+                        transition: 'left 0.15s',
+                      }}
+                    />
+                  </span>
+                  Time
+                </span>
+              )}
+            </div>
           </div>
           <TodayTimeline
             entries={todayEntries}
             historyItems={showChanges ? todayHistory : []}
+            timeTrackingItems={showTimeTracking ? todayTimeTracking : []}
             onClick={(e) => dispatch({ type: 'SELECT_ENTRY', payload: e })}
             activeTimer={activeTimer}
             onTimerToggle={handleTimerToggle}

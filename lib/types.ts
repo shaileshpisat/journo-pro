@@ -58,10 +58,30 @@ export interface FolderNode {
   children: FolderNode[]
 }
 
+export interface SearchFilters {
+  query: string
+  filterEntity: string[]
+  filterFolder: string[]
+  filterTag: string[]
+  filterFrom: string
+  filterTo: string
+  tasksOnly: boolean
+}
+
 export interface TimerState {
   entryId: number
   startedAt: number
   baseElapsed: number
+}
+
+export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
+  query: '',
+  filterEntity: [],
+  filterFolder: [],
+  filterTag: [],
+  filterFrom: '',
+  filterTo: '',
+  tasksOnly: false,
 }
 
 export interface AppState {
@@ -72,6 +92,7 @@ export interface AppState {
   activeTimer: TimerState | null
   addFolderEntry: Entry | null
   currency: CurrencySymbol
+  searchFilters: SearchFilters
 }
 
 export type Action =
@@ -93,3 +114,4 @@ export type Action =
   | { type: 'ADD_COMMENT'; payload: { entryId: number; comment: Comment } }
   | { type: 'EDIT_COMMENT'; payload: { entryId: number; commentId: number; text: string } }
   | { type: 'SET_CURRENCY'; payload: CurrencySymbol }
+  | { type: 'SET_SEARCH_FILTERS'; payload: SearchFilters }

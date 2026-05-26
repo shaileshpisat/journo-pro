@@ -190,13 +190,14 @@ type ViewName =
 
 ```ts
 {
-  entries: Entry[]              // All journal entries
-  currency: CurrencySymbol      // '$' | '€' | '£' | '₹' | '¥' | '₽' | '₩'
-  view: ViewName                // Active view
+  entries: Entry[]         // All journal entries
+  view: ViewName           // Active view
   selectedEntry: Entry | null   // Opens EntryDetail overlay
   sidebarCollapsed: boolean
   activeTimer: TimerState | null
   addFolderEntry: Entry | null  // Opens AddFolderModal
+  currency: CurrencySymbol
+  searchFilters: SearchFilters  // Persistent search view filters (query, filterEntity, filterFolder, filterTag, filterFrom, filterTo, tasksOnly)
 }
 ```
 
@@ -217,11 +218,12 @@ type ViewName =
 | `ADD_COMMENT` | `{ entryId: number, comment: Comment }` | Append comment to entry.comments; records `commentAdded` in history |
 | `EDIT_COMMENT` | `{ entryId: number, commentId: number, text: string }` | Update comment text by id; records `commentEdited` in history |
 | `SET_CURRENCY` | `CurrencySymbol` | Update currency symbol used for all amount displays |
+| `SET_SEARCH_FILTERS` | `SearchFilters` | Persist search view filters (query, entity/folder/tag selections, date range, tasksOnly) |
 
 ### localStorage sync
 
-- On **mount**: reads `jp_entries`, `jp_view`, `jp_activeTimer`, and `jp_currency` once via `useEffect` + `useRef` guard.
-- On **state change**: `useEffect` watching `state.entries` → saves to `jp_entries`; same for `state.view`, `state.activeTimer`, and `state.currency`.
+- On **mount**: reads `jp_entries`, `jp_view`, `jp_activeTimer`, `jp_currency`, and `jp_searchFilters` once via `useEffect` + `useRef` guard.
+- On **state change**: `useEffect` watching `state.entries` → saves to `jp_entries`; same for `state.view`, `state.activeTimer`, `state.currency`, and `state.searchFilters`.
 - **Seed data**: If localStorage is empty, `SEED_ENTRIES` is used as initial state.
 
 ### Consuming state in components
@@ -338,7 +340,7 @@ dispatch({ type: 'SELECT_ENTRY', payload: null })
 
 #### `src/lib/types.ts`
 All shared TypeScript types. **Import all types from here.**
-- `AmountType`, `ViewName`, `Entry`, `FolderNode`, `TimerState`, `AppState`, `Action`
+- `AmountType`, `CurrencySymbol`, `ViewName`, `Entry`, `FolderNode`, `TimerState`, `SearchFilters`, `DEFAULT_SEARCH_FILTERS`, `AppState`, `Action`
 
 #### `src/lib/parser.ts`
 ```ts
@@ -576,7 +578,7 @@ Sections (in order):
 "+ Folder" button: `dispatch(SET_ADD_FOLDER_ENTRY, entry)`
 
 #### `SearchView.tsx`
-State: `query`, `filterEntity` (`string[]`), `filterFolder` (`string[]`), `filterTag` (`string[]`), `filterFrom`, `filterTo`, `filtersOpen`, `tasksOnly`
+State: `filtersOpen` (local); all filter state lives in the global `state.searchFilters` (`SearchFilters`) and persists to `localStorage` under `jp_searchFilters`.
 
 Filter logic: AND combination across filter types. Text search checks `entry.text` and `entry.entity` (case-insensitive). Entity/Folder use OR (entry matches any selected). **Tag filter uses scored sorting**: entries matching all selected tags appear first, then those matching a subset (scored by match count), then those matching at least 1. Date range checks `entry.timestamp.slice(0, 10)`. A "Tasks" toggle switch filters to entries where `isTask === true`.
 
@@ -730,5 +732,6 @@ style={{ color: 'var(--color-accent)', background: 'var(--color-accent-light)' }
 | `jp_view` | `string` | Last active view name |
 | `jp_activeTimer` | `TimerState` JSON | Active timer (persists across refresh) |
 | `jp_currency` | `string` | Selected currency symbol (`$`, `€`, `£`, etc.) |
+| `jp_searchFilters` | `SearchFilters` JSON | Search view filter state (query, entity/folder/tag selections, date range, tasksOnly toggle) |
 
 Written by `AppContext.tsx` via `useEffect`. Read once on mount via hydration guard (`useRef`). On first visit (empty localStorage), `SEED_ENTRIES` from `src/lib/seedData.ts` is used.

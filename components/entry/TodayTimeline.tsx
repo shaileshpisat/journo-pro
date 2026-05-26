@@ -1,5 +1,6 @@
-import { Entry, TimerState, EntryHistory } from '@/lib/types'
-import { fmtTime, fmtAmt } from '@/lib/formatters'
+import { Entry, TimerState, EntryHistory, TimeLog } from '@/lib/types'
+import { fmtTime, fmtAmt, fmtDate, fmtDuration } from '@/lib/formatters'
+import { isOverdue } from '@/lib/predicates'
 import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
 import Icon from '@/components/ui/Icon'
@@ -10,9 +11,18 @@ export interface HistoryRowData {
   timestamp: number
 }
 
+export interface TimeLogRowData {
+  entryText: string
+  entryId: number
+  startedAt: number
+  duration: number
+  description?: string
+}
+
 interface TodayTimelineProps {
   entries: Entry[]
   historyItems?: HistoryRowData[]
+  timeTrackingItems?: TimeLogRowData[]
   onClick: (entry: Entry) => void
   activeTimer?: TimerState | null
   onTimerToggle?: (entry: Entry) => void
@@ -85,7 +95,39 @@ function HistoryRow({ history, entryText, timestamp, currency = '$' }: { history
   )
 }
 
-export default function TodayTimeline({ entries, historyItems, onClick, activeTimer, onTimerToggle, onTaskToggle, currency = '$' }: TodayTimelineProps) {
+function TimeRow({ entryText, startedAt, duration, description }: TimeLogRowData) {
+  return (
+    <div style={{
+      background: 'transparent',
+      borderRadius: 8,
+      padding: '6px 13px',
+      marginBottom: 6,
+      fontSize: 12,
+      lineHeight: 1.4,
+      border: '1px dashed var(--color-border)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+        <Icon name="stopwatch" size={11} color="var(--color-accent)" />
+        <span style={{ fontWeight: 500, color: 'var(--color-text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {entryText.slice(0, 40)}{entryText.length > 40 ? '…' : ''}
+        </span>
+        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--color-text2)', flexShrink: 0 }}>
+          {fmtDuration(duration)}
+        </span>
+      </div>
+      {description && (
+        <div style={{ paddingLeft: 17, fontSize: 11, color: 'var(--color-text3)', lineHeight: 1.4 }}>
+          {description}
+        </div>
+      )}
+      <div style={{ paddingLeft: 17, fontSize: 10, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace", marginTop: 1 }}>
+        {new Date(startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+      </div>
+    </div>
+  )
+}
+
+export default function TodayTimeline({ entries, historyItems, timeTrackingItems, onClick, activeTimer, onTimerToggle, onTaskToggle, currency = '$' }: TodayTimelineProps) {
   const sorted = [...entries].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
   const byHour: Record<number, Entry[]> = {}
   sorted.forEach((e) => {
@@ -104,7 +146,17 @@ export default function TodayTimeline({ entries, historyItems, onClick, activeTi
     })
   }
 
-  const allHours = new Set([...Object.keys(byHour).map(Number), ...Object.keys(histByHour).map(Number)])
+  const timeByHour: Record<number, TimeLogRowData[]> = {}
+  if (timeTrackingItems) {
+    const sortedTime = [...timeTrackingItems].sort((a, b) => a.startedAt - b.startedAt)
+    sortedTime.forEach((item) => {
+      const h = new Date(item.startedAt).getHours()
+      if (!timeByHour[h]) timeByHour[h] = []
+      timeByHour[h].push(item)
+    })
+  }
+
+  const allHours = new Set([...Object.keys(byHour).map(Number), ...Object.keys(histByHour).map(Number), ...Object.keys(timeByHour).map(Number)])
   const hours = [...allHours].sort((a, b) => a - b)
 
   const fmtHour = (h: number) => {
@@ -244,6 +296,12 @@ export default function TodayTimeline({ entries, historyItems, onClick, activeTi
                       )}
                     </div>
                   </div>
+                  {e.actionDate && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11, color: isOverdue(e) ? 'var(--color-red)' : 'var(--color-amber)', fontWeight: 500 }}>
+                      <Icon name="clock" size={11} />
+                      {fmtDate(e.actionDate)}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 5, alignItems: 'center' }}>
                     <span
                       style={{
@@ -265,6 +323,9 @@ export default function TodayTimeline({ entries, historyItems, onClick, activeTi
             })}
             {histByHour[h]?.map((item, i) => (
               <HistoryRow key={`h-${i}`} history={item.history} entryText={item.entryText} timestamp={item.timestamp} currency={currency} />
+            ))}
+            {timeByHour[h]?.map((item, i) => (
+              <TimeRow key={`t-${i}`} entryText={item.entryText} entryId={item.entryId} startedAt={item.startedAt} duration={item.duration} description={item.description} />
             ))}
           </div>
         </div>

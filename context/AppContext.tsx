@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react'
-import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState, CurrencySymbol } from '@/lib/types'
+import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState, CurrencySymbol, DEFAULT_SEARCH_FILTERS, SearchFilters } from '@/lib/types'
 import { SEED_ENTRIES } from '@/lib/seedData'
 
 function todayStr() {
@@ -16,6 +16,7 @@ const initialState: AppState = {
   activeTimer: null,
   addFolderEntry: null,
   currency: '$' as CurrencySymbol,
+  searchFilters: { ...DEFAULT_SEARCH_FILTERS },
 }
 
 function reducer(state: AppState, action: Action): AppState {
@@ -154,6 +155,8 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'SET_CURRENCY':
       return { ...state, currency: action.payload }
+    case 'SET_SEARCH_FILTERS':
+      return { ...state, searchFilters: action.payload }
     default:
       return state
   }
@@ -199,6 +202,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const storedCurrency = window.localStorage.getItem('jp_currency') as CurrencySymbol | null
       if (storedCurrency) dispatch({ type: 'SET_CURRENCY', payload: storedCurrency })
     } catch {}
+    try {
+      const storedFilters = window.localStorage.getItem('jp_searchFilters')
+      if (storedFilters) {
+        const parsed: SearchFilters = JSON.parse(storedFilters)
+        dispatch({ type: 'SET_SEARCH_FILTERS', payload: parsed })
+      }
+    } catch {}
   }, [])
 
   // Persist entries
@@ -228,6 +238,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated.current) return
     window.localStorage.setItem('jp_currency', state.currency)
   }, [state.currency])
+
+  // Persist search filters
+  useEffect(() => {
+    if (!hydrated.current) return
+    window.localStorage.setItem('jp_searchFilters', JSON.stringify(state.searchFilters))
+  }, [state.searchFilters])
 
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>
 }

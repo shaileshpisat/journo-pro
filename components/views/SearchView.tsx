@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { getAllFolderPaths, folderMatches } from '@/lib/folderUtils'
+import { SearchFilters } from '@/lib/types'
 import EntryCard from '@/components/entry/EntryCard'
 import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
@@ -12,18 +13,19 @@ import { isOverdue } from '@/lib/predicates'
 
 export default function SearchView() {
   const { state, dispatch } = useAppState()
-  const { entries } = state
+  const { entries, searchFilters } = state
+  const {
+    query, filterEntity, filterFolder, filterTag,
+    filterFrom, filterTo, tasksOnly,
+  } = searchFilters
+
+  const setFilters = (partial: Partial<SearchFilters>) => {
+    dispatch({ type: 'SET_SEARCH_FILTERS', payload: { ...searchFilters, ...partial } })
+  }
 
   const activeEntries = entries.filter((e) => !e.archived)
 
-  const [query, setQuery] = useState('')
-  const [filterEntity, setFilterEntity] = useState<string[]>([])
-  const [filterFolder, setFilterFolder] = useState<string[]>([])
-  const [filterTag, setFilterTag] = useState<string[]>([])
-  const [filterFrom, setFilterFrom] = useState('')
-  const [filterTo, setFilterTo] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [tasksOnly, setTasksOnly] = useState(false)
 
   const allEntities = [...new Set(activeEntries.filter((e) => e.entity).map((e) => e.entity!))].sort()
   const allFolders = getAllFolderPaths(activeEntries).sort()
@@ -52,7 +54,7 @@ export default function SearchView() {
 
   const hasFilters = filterEntity.length > 0 || filterFolder.length > 0 || filterTag.length > 0 || filterFrom || filterTo
   const activeFilterCount = [filterEntity.length > 0, filterFolder.length > 0, filterTag.length > 0, !!filterFrom, !!filterTo].filter(Boolean).length
-  const clearAll = () => { setFilterEntity([]); setFilterFolder([]); setFilterTag([]); setFilterFrom(''); setFilterTo('') }
+  const clearAll = () => setFilters({ query: '', filterEntity: [], filterFolder: [], filterTag: [], filterFrom: '', filterTo: '', tasksOnly: false })
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
@@ -63,15 +65,15 @@ export default function SearchView() {
           <Icon name="search" size={15} color="var(--color-text3)" />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => setFilters({ query: e.target.value })}
             placeholder="Search entries…"
             autoFocus
             style={{ border: 'none', outline: 'none', flex: 1, fontFamily: 'inherit', fontSize: 14, background: 'transparent', color: 'var(--color-text)' }}
           />
-          {query && <span onClick={() => setQuery('')} style={{ cursor: 'pointer', color: 'var(--color-text3)', fontSize: 16 }}>×</span>}
+          {query && <span onClick={() => setFilters({ query: '' })} style={{ cursor: 'pointer', color: 'var(--color-text3)', fontSize: 16 }}>×</span>}
         </div>
         <span
-          onClick={() => setTasksOnly((v) => !v)}
+          onClick={() => setFilters({ tasksOnly: !tasksOnly })}
           style={{
             display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
             userSelect: 'none', fontFamily: 'inherit', fontSize: 12,
@@ -118,22 +120,22 @@ export default function SearchView() {
         <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16, marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Entity</label>
-            <SearchableSelect multi value={filterEntity} onChange={(v) => setFilterEntity(v as string[])} options={allEntities} allLabel="All entities" placeholder="Search entities…" />
+            <SearchableSelect multi value={filterEntity} onChange={(v) => setFilters({ filterEntity: v as string[] })} options={allEntities} allLabel="All entities" placeholder="Search entities…" />
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Folder</label>
-            <SearchableSelect multi value={filterFolder} onChange={(v) => setFilterFolder(v as string[])} options={allFolders} allLabel="All folders" placeholder="Search folders…" />
+            <SearchableSelect multi value={filterFolder} onChange={(v) => setFilters({ filterFolder: v as string[] })} options={allFolders} allLabel="All folders" placeholder="Search folders…" />
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Tag</label>
-            <SearchableSelect multi value={filterTag} onChange={(v) => setFilterTag(v as string[])} options={allTags} allLabel="All tags" placeholder="Search tags…" formatOption={(t) => `#${t}`} />
+            <SearchableSelect multi value={filterTag} onChange={(v) => setFilters({ filterTag: v as string[] })} options={allTags} allLabel="All tags" placeholder="Search tags…" formatOption={(t) => `#${t}`} />
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Date range</label>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 12, background: '#fff', color: 'var(--color-text)', outline: 'none' }} />
+              <input type="date" value={filterFrom} onChange={(e) => setFilters({ filterFrom: e.target.value })} style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 12, background: '#fff', color: 'var(--color-text)', outline: 'none' }} />
               <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>to</span>
-              <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 12, background: '#fff', color: 'var(--color-text)', outline: 'none' }} />
+              <input type="date" value={filterTo} onChange={(e) => setFilters({ filterTo: e.target.value })} style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 12, background: '#fff', color: 'var(--color-text)', outline: 'none' }} />
             </div>
           </div>
           {hasFilters && (
@@ -146,11 +148,11 @@ export default function SearchView() {
 
       {hasFilters && !filtersOpen && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-          {filterEntity.map((e) => <Chip key={e} label={e} icon="entity" bg="var(--color-bg3)" onRemove={() => setFilterEntity((p) => p.filter((x) => x !== e))} small />)}
+          {filterEntity.map((e) => <Chip key={e} label={e} icon="entity" bg="var(--color-bg3)" onRemove={() => setFilters({ filterEntity: filterEntity.filter((x) => x !== e) })} small />)}
           {filterFolder.map((f) => <FolderChip key={f} path={f} small />)}
-          {filterTag.map((t) => <Chip key={t} label={`#${t}`} icon="tag" bg="var(--color-bg3)" onRemove={() => setFilterTag((p) => p.filter((x) => x !== t))} small />)}
-          {filterFrom && <Chip label={`From ${filterFrom}`} icon="clock" bg="var(--color-amber-light)" color="var(--color-amber)" onRemove={() => setFilterFrom('')} small />}
-          {filterTo && <Chip label={`To ${filterTo}`} icon="clock" bg="var(--color-amber-light)" color="var(--color-amber)" onRemove={() => setFilterTo('')} small />}
+          {filterTag.map((t) => <Chip key={t} label={`#${t}`} icon="tag" bg="var(--color-bg3)" onRemove={() => setFilters({ filterTag: filterTag.filter((x) => x !== t) })} small />)}
+          {filterFrom && <Chip label={`From ${filterFrom}`} icon="clock" bg="var(--color-amber-light)" color="var(--color-amber)" onRemove={() => setFilters({ filterFrom: '' })} small />}
+          {filterTo && <Chip label={`To ${filterTo}`} icon="clock" bg="var(--color-amber-light)" color="var(--color-amber)" onRemove={() => setFilters({ filterTo: '' })} small />}
         </div>
       )}
 
