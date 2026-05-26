@@ -567,11 +567,11 @@ Sections (in order):
 "+ Folder" button: `dispatch(SET_ADD_FOLDER_ENTRY, entry)`
 
 #### `SearchView.tsx`
-State: `query`, `filterEntity` (`string[]`), `filterFolder` (`string[]`), `filterTag` (`string[]`), `filterFrom`, `filterTo`, `filtersOpen`
+State: `query`, `filterEntity` (`string[]`), `filterFolder` (`string[]`), `filterTag` (`string[]`), `filterFrom`, `filterTo`, `filtersOpen`, `tasksOnly`
 
-Filter logic: AND combination. Text search checks `entry.text` and `entry.entity` (case-insensitive). Multi-select filters check if entry matches **any** of the selected values (OR within each filter). Date range checks `entry.timestamp.slice(0, 10)`.
+Filter logic: AND combination across filter types. Text search checks `entry.text` and `entry.entity` (case-insensitive). Entity/Folder use OR (entry matches any selected). **Tag filter uses scored sorting**: entries matching all selected tags appear first, then those matching a subset (scored by match count), then those matching at least 1. Date range checks `entry.timestamp.slice(0, 10)`. A "Tasks" toggle switch filters to entries where `isTask === true`.
 
-Filter UI uses `<SearchableSelect multi>` for Entity, Folder, Tag — each with searchable dropdown and checkboxes. Filter chips appear as `<Chip>` with `onRemove` when filter panel is closed (one chip per selected value).
+Filter UI uses `<SearchableSelect multi>` for Entity, Folder, Tag — each with searchable dropdown and checkboxes. Filter chips appear as `<Chip>` with `onRemove` when filter panel is closed (one chip per selected value). A pill toggle between the search input and Filters button toggles `tasksOnly`.
 
 #### `CalendarView.tsx`
 State: `weekOffset` (0 = current week)
@@ -584,7 +584,7 @@ Renders `buildFolderTree(entries)` as a list of `<FolderTreeNode depth=0>`.
 #### `FolderDetailView.tsx`
 Props: `folderName: string`
 
-Shows all entries where `folderMatches(entry.folder, folderName)` — includes sub-folder entries. Shows inflow/outflow totals for the folder.
+Shows all entries where `folderMatches(entry.folder, folderName)` — includes sub-folder entries. Groups entries by date (descending) and renders each day as an hourly `TodayTimeline` with history items. Includes a Tasks toggle switch to filter entries to only tasks. Shows inflow/outflow totals and entry count for the folder. Empty state message changes based on filter ("No tasks in this folder." vs "No entries in this folder.").
 
 #### `SettingsView.tsx`
 Tabbed interface showing all entities, tags, and folders derived from entries — each with usage count, inline rename, and add-new capability.

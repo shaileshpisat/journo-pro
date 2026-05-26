@@ -23,20 +23,32 @@ export default function SearchView() {
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [tasksOnly, setTasksOnly] = useState(false)
 
   const allEntities = [...new Set(activeEntries.filter((e) => e.entity).map((e) => e.entity!))].sort()
   const allFolders = getAllFolderPaths(activeEntries).sort()
   const allTags = [...new Set(activeEntries.flatMap((e) => e.tags))].sort()
 
-  const results = activeEntries.filter((e) => {
-    if (query && !e.text.toLowerCase().includes(query.toLowerCase()) && !(e.entity || '').toLowerCase().includes(query.toLowerCase())) return false
-    if (filterEntity.length > 0 && !filterEntity.includes(e.entity || '')) return false
-    if (filterFolder.length > 0 && !filterFolder.some((f) => folderMatches(e.folder, f))) return false
-    if (filterTag.length > 0 && !filterTag.some((t) => e.tags.includes(t))) return false
-    if (filterFrom && e.timestamp.slice(0, 10) < filterFrom) return false
-    if (filterTo && e.timestamp.slice(0, 10) > filterTo) return false
-    return true
-  })
+  const tagFiltered = filterTag.length > 0
+  const results = activeEntries
+    .filter((e) => {
+      if (query && !e.text.toLowerCase().includes(query.toLowerCase()) && !(e.entity || '').toLowerCase().includes(query.toLowerCase())) return false
+      if (filterEntity.length > 0 && !filterEntity.includes(e.entity || '')) return false
+      if (filterFolder.length > 0 && !filterFolder.some((f) => folderMatches(e.folder, f))) return false
+      if (tasksOnly && !e.isTask) return false
+      if (filterFrom && e.timestamp.slice(0, 10) < filterFrom) return false
+      if (filterTo && e.timestamp.slice(0, 10) > filterTo) return false
+      return true
+    })
+    .map((e) => ({
+      entry: e,
+      tagScore: tagFiltered ? filterTag.filter((t) => e.tags.includes(t)).length : 0,
+    }))
+    .filter((item) => !tagFiltered || item.tagScore > 0)
+    .sort((a, b) => {
+      if (tagFiltered && a.tagScore !== b.tagScore) return b.tagScore - a.tagScore
+      return b.entry.timestamp > a.entry.timestamp ? 1 : -1
+    })
 
   const hasFilters = filterEntity.length > 0 || filterFolder.length > 0 || filterTag.length > 0 || filterFrom || filterTo
   const activeFilterCount = [filterEntity.length > 0, filterFolder.length > 0, filterTag.length > 0, !!filterFrom, !!filterTo].filter(Boolean).length
@@ -58,6 +70,34 @@ export default function SearchView() {
           />
           {query && <span onClick={() => setQuery('')} style={{ cursor: 'pointer', color: 'var(--color-text3)', fontSize: 16 }}>×</span>}
         </div>
+        <span
+          onClick={() => setTasksOnly((v) => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+            userSelect: 'none', fontFamily: 'inherit', fontSize: 12,
+            color: tasksOnly ? 'var(--color-accent)' : 'var(--color-text3)',
+            fontWeight: tasksOnly ? 600 : 400,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span
+            style={{
+              width: 28, height: 14, borderRadius: 99,
+              background: tasksOnly ? 'var(--color-accent)' : 'var(--color-bg3)',
+              position: 'relative', transition: 'background 0.15s',
+            }}
+          >
+            <span
+              style={{
+                position: 'absolute', top: 2,
+                left: tasksOnly ? 16 : 2,
+                width: 10, height: 10, borderRadius: '50%',
+                background: '#fff', transition: 'left 0.15s',
+              }}
+            />
+          </span>
+          Tasks
+        </span>
         <button
           onClick={() => setFiltersOpen((o) => !o)}
           style={{
@@ -116,7 +156,11 @@ export default function SearchView() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <span style={{ fontSize: 12, color: 'var(--color-text3)' }}>{results.length} {results.length === 1 ? 'result' : 'results'}</span>
-        {(query || hasFilters) && <span style={{ fontSize: 12, color: 'var(--color-text3)' }}>sorted by date</span>}
+        <span style={{ display: 'flex', gap: 8 }}>
+          {tasksOnly && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-accent)' }}>Tasks only</span>}
+          {tagFiltered && <span style={{ fontSize: 12, color: 'var(--color-text3)' }}>sorted by tag match</span>}
+          {!tagFiltered && (query || hasFilters) && <span style={{ fontSize: 12, color: 'var(--color-text3)' }}>sorted by date</span>}
+        </span>
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
         {results.length === 0 && (
@@ -124,9 +168,7 @@ export default function SearchView() {
             No entries match your search.
           </div>
         )}
-        {[...results]
-          .sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1))
-          .map((e) => (
+        {results.map(({ entry: e }) => (
             <EntryCard
               key={e.id}
               entry={e}
