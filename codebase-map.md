@@ -141,6 +141,12 @@ interface Entry {
   amount: number | null
   amountType: 'inflow' | 'outflow' | null
   entity: string | null // Parsed from @entity
+  timeLogs: TimeLog[]   // Timer tracking entries
+  history: EntryHistory[] // Audit trail of changes
+  isTask: boolean       // Marked as task
+  isTaskDone: boolean   // Completed state
+  completedAt: string | null  // ISO timestamp when task was completed
+  archived: boolean     // Soft-delete
   comments: Comment[]   // User comments
 }
 ```
@@ -198,6 +204,7 @@ type ViewName =
   addFolderEntry: Entry | null  // Opens AddFolderModal
   currency: CurrencySymbol
   searchFilters: SearchFilters  // Persistent search view filters (query, filterEntity, filterFolder, filterTag, filterFrom, filterTo, tasksOnly)
+  toast: string | null         // Toast notification message (auto-dismissed after 3s)
 }
 ```
 
@@ -219,6 +226,8 @@ type ViewName =
 | `EDIT_COMMENT` | `{ entryId: number, commentId: number, text: string }` | Update comment text by id; records `commentEdited` in history |
 | `SET_CURRENCY` | `CurrencySymbol` | Update currency symbol used for all amount displays |
 | `SET_SEARCH_FILTERS` | `SearchFilters` | Persist search view filters (query, entity/folder/tag selections, date range, tasksOnly) |
+| `SET_TOAST` | `string \| null` | Show/dismiss toast notification (auto-dismissed after 3s) |
+| `TOGGLE_TASK_DONE` | `number` (id) | Toggle task done state; sets `completedAt` (ISO) when completing; clears on undo; blocks undo past same-day |
 
 ### localStorage sync
 
@@ -658,7 +667,7 @@ User selects destination → clicks "Move here"
 ### Timer
 
 ```
-User clicks stopwatch on EntryCard / EntryDetail
+User clicks timer button / tracked-time display on EntryCard / EntryDetail
   → If timer running for same entry: dispatch LOG_TIME (records elapsed), timer stops
   → If timer running for different entry: dispatch LOG_TIME for old entry,
     then dispatch SET_TIMER for new entry → timer switches
@@ -668,6 +677,23 @@ User clicks stopwatch on EntryCard / EntryDetail
 User clicks Stop button on FloatingTimer
   → dispatch LOG_TIME with duration + description
   → FloatingTimer disappears
+
+Timer button behavior:
+  - Entry has timeLogs + no active timer: shows fmtDuration(total) in accent-colored button
+  - Entry has active timer running: shows pause icon + "Running" in red
+  - Entry has no timeLogs + no active timer: shows stopwatch icon
+  - Clicking any of these triggers handleTimerToggle (start/stop/switch timer)
+```
+
+### Completing / undoing a task
+
+```
+User clicks checkbox on a task entry (or toggles Task switch in EntryDetail)
+  → dispatch TOGGLE_TASK_DONE(entry.id)
+  → Reducer checks: if completing → sets completedAt: new Date().toISOString()
+  → If undoing on a different day → state.toast = message, state unchanged
+    → Toast component shows message for 3s
+  → If undoing same day → sets completedAt: null
 ```
 
 ### Navigation

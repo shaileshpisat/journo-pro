@@ -17,6 +17,7 @@ import EntryDetail from '@/components/entry/EntryDetail'
 import FloatingTimer from '@/components/FloatingTimer'
 import ScrollToTop from '@/components/ScrollToTop'
 import AddFolderModal from '@/components/modals/AddFolderModal'
+import Toast from '@/components/ui/Toast'
 
 export default function App() {
   const { state } = useAppState()
@@ -49,6 +50,7 @@ export default function App() {
         )}
       </main>
       {activeTimer && <FloatingTimer />}
+      <Toast />
       <ScrollToTop />
       {addFolderEntry && <AddFolderModal />}
     </div>

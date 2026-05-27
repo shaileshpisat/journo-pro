@@ -38,6 +38,9 @@ export default function HomeView() {
   const todayTags = [...new Set(todayEntries.flatMap((e) => e.tags))]
   const todayFolders = [...new Set(todayEntries.filter((e) => e.folder).map((e) => e.folder!))]
   const todayEntities = [...new Set(todayEntries.filter((e) => e.entity).map((e) => e.entity!))]
+  const tagCount = (tag: string) => todayEntries.filter((e) => e.tags.includes(tag)).length
+  const folderCount = (path: string) => todayEntries.filter((e) => e.folder === path).length
+  const entityCount = (name: string) => todayEntries.filter((e) => e.entity === name).length
   const hasSummary = todayTags.length || todayFolders.length || todayEntities.length
 
   const todayHistory = useMemo(() => {
@@ -147,7 +150,7 @@ export default function HomeView() {
                 Entities
               </span>
               {todayEntities.map((e) => (
-                <Chip key={e} icon="entity" label={e} small />
+                <Chip key={e} icon="entity" label={`${e} (${entityCount(e)})`} small />
               ))}
             </div>
           )}
@@ -166,7 +169,7 @@ export default function HomeView() {
                 Folders
               </span>
               {todayFolders.map((f) => (
-                <FolderChip key={f} path={f} small />
+                <FolderChip key={f} path={f} small count={folderCount(f)} />
               ))}
             </div>
           )}
@@ -185,7 +188,7 @@ export default function HomeView() {
                 Tags
               </span>
               {todayTags.map((t) => (
-                <Chip key={t} icon="tag" label={`#${t}`} small />
+                <Chip key={t} icon="tag" label={`#${t} (${tagCount(t)})`} small />
               ))}
             </div>
           )}

@@ -17,6 +17,7 @@ const initialState: AppState = {
   addFolderEntry: null,
   currency: '$' as CurrencySymbol,
   searchFilters: { ...DEFAULT_SEARCH_FILTERS },
+  toast: null,
 }
 
 function reducer(state: AppState, action: Action): AppState {
@@ -66,24 +67,37 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         entries: state.entries.map((e) =>
-          e.id === action.payload ? { ...e, isTask: true, isTaskDone: false, history: [...(e.history || []), { timestamp: Date.now(), field: 'isTask', oldValue: false, newValue: true }] } : e
+          e.id === action.payload ? { ...e, isTask: true, isTaskDone: false, completedAt: null, history: [...(e.history || []), { timestamp: Date.now(), field: 'isTask', oldValue: false, newValue: true }] } : e
         ),
         selectedEntry:
           state.selectedEntry?.id === action.payload
-            ? { ...state.selectedEntry, isTask: true, isTaskDone: false, history: [...(state.selectedEntry.history || []), { timestamp: Date.now(), field: 'isTask', oldValue: false, newValue: true }] }
+            ? { ...state.selectedEntry, isTask: true, isTaskDone: false, completedAt: null, history: [...(state.selectedEntry.history || []), { timestamp: Date.now(), field: 'isTask', oldValue: false, newValue: true }] }
             : state.selectedEntry,
       }
-    case 'TOGGLE_TASK_DONE':
+    case 'TOGGLE_TASK_DONE': {
+      const entry = state.entries.find((e) => e.id === action.payload)
+      if (!entry) return state
+      if (entry.isTaskDone && entry.completedAt) {
+        const today = new Date().toISOString().split('T')[0]
+        if (entry.completedAt.split('T')[0] !== today) {
+          return { ...state, toast: 'Cannot undo — task was completed on a previous day' }
+        }
+      }
+      const now = Date.now()
       return {
         ...state,
+        toast: null,
         entries: state.entries.map((e) =>
-          e.id === action.payload ? { ...e, isTaskDone: !e.isTaskDone, history: [...(e.history || []), { timestamp: Date.now(), field: 'isTaskDone', oldValue: e.isTaskDone, newValue: !e.isTaskDone }] } : e
+          e.id === action.payload
+            ? { ...e, isTaskDone: !e.isTaskDone, completedAt: e.isTaskDone ? null : new Date().toISOString(), history: [...(e.history || []), { timestamp: now, field: 'isTaskDone', oldValue: e.isTaskDone, newValue: !e.isTaskDone }] }
+            : e
         ),
         selectedEntry:
           state.selectedEntry?.id === action.payload
-            ? { ...state.selectedEntry, isTaskDone: !state.selectedEntry.isTaskDone, history: [...(state.selectedEntry.history || []), { timestamp: Date.now(), field: 'isTaskDone', oldValue: state.selectedEntry.isTaskDone, newValue: !state.selectedEntry.isTaskDone }] }
+            ? { ...state.selectedEntry, isTaskDone: !state.selectedEntry.isTaskDone, completedAt: state.selectedEntry.isTaskDone ? null : new Date().toISOString(), history: [...(state.selectedEntry.history || []), { timestamp: now, field: 'isTaskDone', oldValue: state.selectedEntry.isTaskDone, newValue: !state.selectedEntry.isTaskDone }] }
             : state.selectedEntry,
       }
+    }
     case 'MOVE_FOLDER': {
       const { oldPath, newPath } = action.payload
       const now = Date.now()
@@ -157,6 +171,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, currency: action.payload }
     case 'SET_SEARCH_FILTERS':
       return { ...state, searchFilters: action.payload }
+    case 'SET_TOAST':
+      return { ...state, toast: action.payload }
     default:
       return state
   }

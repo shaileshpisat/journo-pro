@@ -3,9 +3,10 @@ import Icon from './Icon'
 interface FolderChipProps {
   path: string | null
   small?: boolean
+  count?: number
 }
 
-export default function FolderChip({ path, small }: FolderChipProps) {
+export default function FolderChip({ path, small, count }: FolderChipProps) {
   if (!path) return null
   const label = path.split('/').join(' / ')
   return (
@@ -26,6 +27,7 @@ export default function FolderChip({ path, small }: FolderChipProps) {
     >
       <Icon name="folder" size={11} />
       {label}
+      {count !== undefined && <span style={{ opacity: 0.6 }}>({count})</span>}
     </span>
   )
 }

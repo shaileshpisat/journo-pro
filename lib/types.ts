@@ -48,6 +48,7 @@ export interface Entry {
   history: EntryHistory[]
   isTask: boolean
   isTaskDone: boolean
+  completedAt: string | null
   archived: boolean
   comments: Comment[]
 }
@@ -93,6 +94,7 @@ export interface AppState {
   addFolderEntry: Entry | null
   currency: CurrencySymbol
   searchFilters: SearchFilters
+  toast: string | null
 }
 
 export type Action =
@@ -115,3 +117,4 @@ export type Action =
   | { type: 'EDIT_COMMENT'; payload: { entryId: number; commentId: number; text: string } }
   | { type: 'SET_CURRENCY'; payload: CurrencySymbol }
   | { type: 'SET_SEARCH_FILTERS'; payload: SearchFilters }
+  | { type: 'SET_TOAST'; payload: string | null }

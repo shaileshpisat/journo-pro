@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Entry, Comment } from '@/lib/types'
-import { fmtTime, fmtDate, fmtAmt } from '@/lib/formatters'
+import { fmtTime, fmtDate, fmtAmt, fmtDuration } from '@/lib/formatters'
 import { isOverdue } from '@/lib/predicates'
 import { TimerState } from '@/lib/types'
 import Chip from '@/components/ui/Chip'
@@ -49,6 +49,7 @@ export default function EntryCard({
   const [commentHovered, setCommentHovered] = useState(false)
   const amt = fmtAmt(entry.amount, entry.amountType, currency)
   const lastComment: Comment | undefined = entry.comments?.[entry.comments.length - 1]
+  const totalTracked = entry.timeLogs ? entry.timeLogs.reduce((s, l) => s + l.duration, 0) : 0
 
   return (
     <div
@@ -139,20 +140,30 @@ export default function EntryCard({
                 onTimerToggle(entry)
               }}
               style={{
-                background: timerActive ? 'var(--color-red-light)' : 'var(--color-bg2)',
-                border: `1px solid ${timerActive ? 'var(--color-red)' : 'var(--color-border)'}`,
+                background: timerActive ? 'var(--color-red-light)' : totalTracked > 0 ? 'var(--color-accent-light)' : 'var(--color-bg2)',
+                border: `1px solid ${timerActive ? 'var(--color-red)' : totalTracked > 0 ? 'var(--color-accent)' : 'var(--color-border)'}`,
                 borderRadius: 6,
-                padding: '3px 6px',
+                padding: totalTracked > 0 && !timerActive ? '3px 8px' : '3px 6px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                color: timerActive ? 'var(--color-red)' : 'var(--color-text3)',
+                color: timerActive ? 'var(--color-red)' : totalTracked > 0 ? 'var(--color-accent)' : 'var(--color-text3)',
+                fontFamily: "'DM Mono', monospace",
+                fontSize: 11,
+                fontWeight: timerActive || totalTracked > 0 ? 500 : 400,
+                whiteSpace: 'nowrap',
               }}
             >
-              <Icon name={timerActive ? 'pause' : 'stopwatch'} size={12} />
-              {timerActive && (
-                <span style={{ fontSize: 11, fontWeight: 500 }}>Running</span>
+              {timerActive ? (
+                <>
+                  <Icon name="pause" size={12} />
+                  <span style={{ fontSize: 11, fontWeight: 500 }}>Running</span>
+                </>
+              ) : totalTracked > 0 ? (
+                <>{fmtDuration(totalTracked)}</>
+              ) : (
+                <Icon name="stopwatch" size={12} />
               )}
             </button>
           )}
@@ -232,6 +243,15 @@ export default function EntryCard({
               />
             )}
             {entry.entity && <Chip icon="entity" label={entry.entity} small />}
+            {entry.isTaskDone && entry.completedAt && (
+              <Chip
+                icon="check"
+                label={'Done ' + (entry.completedAt.split('T')[0] === new Date().toISOString().split('T')[0] ? fmtTime(entry.completedAt) : fmtDate(entry.completedAt))}
+                bg="var(--color-accent-light)"
+                color="var(--color-accent)"
+                small
+              />
+            )}
           </>
         ) : (
           <>
@@ -252,6 +272,15 @@ export default function EntryCard({
                 label={fmtDate(entry.actionDate)}
                 bg={overdue ? 'var(--color-red-light)' : 'var(--color-amber-light)'}
                 color={overdue ? 'var(--color-red)' : 'var(--color-amber)'}
+                small
+              />
+            )}
+            {entry.isTaskDone && entry.completedAt && (
+              <Chip
+                icon="check"
+                label={'Done ' + (entry.completedAt.split('T')[0] === new Date().toISOString().split('T')[0] ? fmtTime(entry.completedAt) : fmtDate(entry.completedAt))}
+                bg="var(--color-accent-light)"
+                color="var(--color-accent)"
                 small
               />
             )}

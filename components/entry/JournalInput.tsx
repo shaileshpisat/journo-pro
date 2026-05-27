@@ -183,6 +183,7 @@ export default function JournalInput() {
         comments: [],
         isTask: markTask,
       isTaskDone: false,
+      completedAt: null,
       archived: false,
     }
     dispatch({ type: 'ADD_ENTRY', payload: entry })

@@ -234,6 +234,7 @@ export default function EntryDetail() {
   const allFolders = [...new Set(state.entries.filter((e) => e.folder).map((e) => e.folder!))]
   const amt = fmtAmt(entry.amount, entry.amountType, state.currency)
   const timerActive = state.activeTimer?.entryId === entry.id
+  const totalTracked = entry.timeLogs ? entry.timeLogs.reduce((s, l) => s + l.duration, 0) : 0
 
   const save = () => {
     const parsedAmount = amount !== '' ? parseFloat(amount) : null
@@ -353,25 +354,31 @@ export default function EntryDetail() {
           <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)' }}>
             Task
           </span>
-          {entry.isTaskDone && (
+          {entry.isTaskDone && entry.completedAt && (
             <span style={{ fontSize: 11, color: 'var(--color-accent)', fontWeight: 500, marginLeft: 2 }}>
-              Completed
+              Completed {entry.completedAt.split('T')[0] === new Date().toISOString().split('T')[0] ? fmtTime(entry.completedAt) : fmtDate(entry.completedAt)}
             </span>
           )}
           <button
               onClick={handleTimerToggle}
               style={{
-                background: timerActive ? 'var(--color-red-light)' : 'var(--color-bg2)',
-                border: `1px solid ${timerActive ? 'var(--color-red)' : 'var(--color-border)'}`,
+                background: timerActive ? 'var(--color-red-light)' : totalTracked > 0 ? 'var(--color-accent-light)' : 'var(--color-bg2)',
+                border: `1px solid ${timerActive ? 'var(--color-red)' : totalTracked > 0 ? 'var(--color-accent)' : 'var(--color-border)'}`,
                 borderRadius: 7, padding: '5px 12px', cursor: 'pointer',
                 display: 'flex', gap: 5, alignItems: 'center',
-                fontFamily: 'inherit', fontSize: 12,
-                color: timerActive ? 'var(--color-red)' : 'var(--color-text2)',
-                fontWeight: timerActive ? 500 : 400,
+                fontFamily: timerActive || totalTracked > 0 ? "'DM Mono', monospace" : 'inherit',
+                fontSize: 12,
+                color: timerActive ? 'var(--color-red)' : totalTracked > 0 ? 'var(--color-accent)' : 'var(--color-text2)',
+                fontWeight: timerActive || totalTracked > 0 ? 500 : 400,
               }}
             >
-              <Icon name={timerActive ? 'pause' : 'stopwatch'} size={13} />
-              {timerActive ? 'Stop timer' : 'Start timer'}
+              {timerActive ? (
+                <><Icon name="pause" size={13} /> Stop timer</>
+              ) : totalTracked > 0 ? (
+                <><Icon name="stopwatch" size={13} /> {fmtDuration(totalTracked)}</>
+              ) : (
+                <><Icon name="stopwatch" size={13} /> Start timer</>
+              )}
             </button>
             <button
               onClick={() => setEditing(!editing)}

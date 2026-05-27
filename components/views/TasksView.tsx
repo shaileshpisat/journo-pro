@@ -37,7 +37,15 @@ export default function TasksView() {
   const completed = filtered.filter((e) => e.isTaskDone)
 
   const activeGroups = useMemo(() => groupByDate(active), [active])
-  const completedGroups = useMemo(() => groupByDate(completed), [completed])
+  const completedGroups = useMemo(() => {
+    const map = new Map<string, Entry[]>()
+    for (const t of completed) {
+      const key = t.completedAt ? t.completedAt.split('T')[0] : getDateKey(t)
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(t)
+    }
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+  }, [completed])
 
   const handleTimerToggle = (entry: Entry) => {
     if (activeTimer?.entryId === entry.id) {

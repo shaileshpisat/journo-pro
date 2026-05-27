@@ -233,6 +233,7 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
                 const e = item.data
                 const amt = fmtAmt(e.amount, e.amountType, currency)
                 const isActive = activeTimer?.entryId === e.id
+                const totalTracked = e.timeLogs ? e.timeLogs.reduce((s, l) => s + l.duration, 0) : 0
                 return (
                   <div
                     key={e.id}
@@ -306,19 +307,31 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
                               onTimerToggle(e)
                             }}
                             style={{
-                              background: isActive ? 'var(--color-red-light)' : 'var(--color-bg2)',
-                              border: `1px solid ${isActive ? 'var(--color-red)' : 'var(--color-border)'}`,
+                              background: isActive ? 'var(--color-red-light)' : totalTracked > 0 ? 'var(--color-accent-light)' : 'var(--color-bg2)',
+                              border: `1px solid ${isActive ? 'var(--color-red)' : totalTracked > 0 ? 'var(--color-accent)' : 'var(--color-border)'}`,
                               borderRadius: 6,
-                              padding: '3px 6px',
+                              padding: totalTracked > 0 && !isActive ? '3px 8px' : '3px 6px',
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
                               gap: 4,
-                              color: isActive ? 'var(--color-red)' : 'var(--color-text3)',
+                              color: isActive ? 'var(--color-red)' : totalTracked > 0 ? 'var(--color-accent)' : 'var(--color-text3)',
+                              fontFamily: "'DM Mono', monospace",
+                              fontSize: 11,
+                              fontWeight: isActive || totalTracked > 0 ? 500 : 400,
+                              whiteSpace: 'nowrap',
                             }}
                           >
-                            <Icon name={isActive ? 'pause' : 'stopwatch'} size={12} />
-                            {isActive && <span style={{ fontSize: 11, fontWeight: 500 }}>Running</span>}
+                            {isActive ? (
+                              <>
+                                <Icon name="pause" size={12} />
+                                <span style={{ fontSize: 11, fontWeight: 500 }}>Running</span>
+                              </>
+                            ) : totalTracked > 0 ? (
+                              <>{fmtDuration(totalTracked)}</>
+                            ) : (
+                              <Icon name="stopwatch" size={12} />
+                            )}
                           </button>
                         )}
                       </div>

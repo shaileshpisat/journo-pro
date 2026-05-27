@@ -125,6 +125,7 @@ export default function SettingsView() {
         comments: [],
         isTask: false,
         isTaskDone: false,
+        completedAt: null,
         archived: false,
       })
     } else if (tab === 'tags') {
@@ -143,6 +144,7 @@ export default function SettingsView() {
         comments: [],
         isTask: false,
         isTaskDone: false,
+        completedAt: null,
         archived: false,
       })
     } else if (tab === 'folders') {
@@ -161,6 +163,7 @@ export default function SettingsView() {
         comments: [],
         isTask: false,
         isTaskDone: false,
+        completedAt: null,
         archived: false,
       })
     }

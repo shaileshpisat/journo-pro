@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { isOverdue } from '@/lib/predicates'
-import { fmtAmt, fmtDate } from '@/lib/formatters'
+import { fmtAmt, fmtDate, fmtTime } from '@/lib/formatters'
 import Icon from '@/components/ui/Icon'
 
 function fmt(d: Date): string {
@@ -166,10 +166,13 @@ export default function CalendarView() {
                       }}>
                         {e.text.slice(0, 40)}{e.text.length > 40 ? '…' : ''}
                       </span>
+                      <span style={{ fontSize: 10, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>{fmtTime(e.timestamp)}</span>
                       {e.isTaskDone && <Icon name="checkSquare" size={10} color="var(--color-accent)" />}
                     </div>
-                    {amt && <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: amt.color, fontWeight: 500 }}>{amt.label}</span>}
-                    {e.actionDate && <span style={{ fontSize: 10, color: overdue ? 'var(--color-red)' : 'var(--color-amber)', fontWeight: 500 }}>{fmtDate(e.actionDate)}</span>}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {amt && <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: amt.color, fontWeight: 500 }}>{amt.label}</span>}
+                      {e.actionDate && <span style={{ fontSize: 10, color: overdue ? 'var(--color-red)' : 'var(--color-amber)', fontWeight: 500 }}>{fmtDate(e.actionDate)}</span>}
+                    </div>
                   </div>
                 )
               })}
