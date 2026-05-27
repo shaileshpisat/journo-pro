@@ -37,7 +37,7 @@ export default function SearchView() {
       if (query && !e.text.toLowerCase().includes(query.toLowerCase()) && !(e.entity || '').toLowerCase().includes(query.toLowerCase())) return false
       if (filterEntity.length > 0 && !filterEntity.includes(e.entity || '')) return false
       if (filterFolder.length > 0 && !filterFolder.some((f) => folderMatches(e.folder, f))) return false
-      if (tasksOnly && !e.isTask) return false
+      if (tasksOnly && (!e.isTask || e.isTaskDone)) return false
       if (filterFrom && e.timestamp.slice(0, 10) < filterFrom) return false
       if (filterTo && e.timestamp.slice(0, 10) > filterTo) return false
       return true

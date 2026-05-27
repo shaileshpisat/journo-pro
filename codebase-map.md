@@ -209,7 +209,7 @@ type ViewName =
 | `UPDATE_ENTRY` | `Entry` | Replace by id; updates selectedEntry if open |
 | `DELETE_ENTRY` | `number` (id) | Remove from entries; clear selectedEntry |
 | `SET_ENTRIES` | `Entry[]` | Replace full array (used for hydration) |
-| `SET_VIEW` | `ViewName` | Change active view; clears selectedEntry |
+| `SET_VIEW` | `ViewName` | Change active view; clears selectedEntry AND resets `searchFilters` to `DEFAULT_SEARCH_FILTERS` |
 | `SELECT_ENTRY` | `Entry \| null` | Open/close EntryDetail overlay |
 | `TOGGLE_SIDEBAR` | — | Toggle sidebarCollapsed |
 | `SET_TIMER` | `TimerState \| null` | Start/stop timer |
@@ -241,14 +241,15 @@ const { state, dispatch } = useAppState()
 There is **no Next.js router involvement** in navigation. The active view is stored in `AppState.view`. `App.tsx` renders the matching view component:
 
 ```ts
-if (selectedEntry)        → <EntryDetail />   // always takes priority
+// EntryDetail renders as an ABSOLUTE overlay on top of the current view
+// (not replacing it), so the view's local state persists when navigating back.
 if (view === 'home')      → <HomeView />
 if (view === 'inbox')     → <InboxView />
 if (view === 'search')    → <SearchView />
 if (view === 'calendar')  → <CalendarView />
 if (view === 'folders')   → <FoldersView />
 if (view === 'settings')  → <SettingsView />
-if (view.startsWith('folder:')) → <FolderDetailView folderName={view.slice(7)} />
+if (view.startsWith('folder:')) → <FolderDetailView key={view} folderName={view.slice(7)} />  // key forces re-mount when navigating between folders
 ```
 
 **To navigate:** dispatch `SET_VIEW`:
@@ -595,7 +596,9 @@ Renders `buildFolderTree(entries)` as a list of `<FolderTreeNode depth=0>`.
 #### `FolderDetailView.tsx`
 Props: `folderName: string`
 
-Shows all entries where `folderMatches(entry.folder, folderName)` — includes sub-folder entries. Groups entries by date (descending) and renders each day as an hourly `TodayTimeline` with history items. Includes a Tasks toggle switch and a tag filter bar with typeahead suggestions and removable pill chips. Shows inflow/outflow totals and entry count for the folder.
+Shows all entries where `folderMatches(entry.folder, folderName)` — includes sub-folder entries. Groups entries by date (descending) and renders each day as an hourly `TodayTimeline` with history items. Includes a Tasks toggle switch (filters to `isTask && !isTaskDone`) and a tag filter bar with typeahead suggestions and removable pill chips. Shows inflow/outflow totals and entry count for the folder.
+
+Uses **local state** for Tasks/Changes/Time toggles and tag filters. Re-mounted with a `key={view}` from App.tsx so local state resets on folder navigation. Filters survive EntryDetail open/close because EntryDetail overlaps via CSS `position: absolute` instead of replacing the view.
 
 #### `SettingsView.tsx`
 Tabbed interface showing all entities, tags, and folders derived from entries — each with usage count, inline rename, and add-new capability.

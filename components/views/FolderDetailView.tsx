@@ -37,7 +37,7 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
 
   const activeEntries = entries.filter((e) => !e.archived)
   const folderEntries = activeEntries.filter((e) => folderMatches(e.folder, folderName))
-  const visibleEntries = tasksOnly ? folderEntries.filter((e) => e.isTask) : folderEntries
+  const visibleEntries = tasksOnly ? folderEntries.filter((e) => e.isTask && !e.isTaskDone) : folderEntries
 
   const totalIn = folderEntries
     .filter((e) => e.amountType === 'inflow')

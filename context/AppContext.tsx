@@ -39,7 +39,7 @@ function reducer(state: AppState, action: Action): AppState {
         selectedEntry: state.selectedEntry?.id === action.payload ? null : state.selectedEntry,
       }
     case 'SET_VIEW':
-      return { ...state, view: action.payload, selectedEntry: null }
+      return { ...state, view: action.payload, selectedEntry: null, searchFilters: { ...DEFAULT_SEARCH_FILTERS } }
     case 'SELECT_ENTRY':
       return { ...state, selectedEntry: action.payload }
     case 'TOGGLE_SIDEBAR':

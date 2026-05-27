@@ -23,7 +23,6 @@ export default function App() {
   const { view, selectedEntry, activeTimer, addFolderEntry } = state
 
   const renderView = () => {
-    if (selectedEntry) return <EntryDetail />
     if (view === 'home') return <HomeView />
     if (view === 'inbox') return <InboxView />
     if (view === 'search') return <SearchView />
@@ -34,7 +33,7 @@ export default function App() {
     if (view === 'archive') return <ArchivesView />
     if (view === 'entities') return <EntitiesView />
     if (view === 'transactions') return <TransactionsView />
-    if (view.startsWith('folder:')) return <FolderDetailView folderName={view.slice(7)} />
+    if (view.startsWith('folder:')) return <FolderDetailView key={view} folderName={view.slice(7)} />
     return <HomeView />
   }
 
@@ -43,6 +42,11 @@ export default function App() {
       <Sidebar />
       <main style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
         {renderView()}
+        {selectedEntry && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 50, overflow: 'auto', background: 'var(--color-bg)' }}>
+            <EntryDetail />
+          </div>
+        )}
       </main>
       {activeTimer && <FloatingTimer />}
       <ScrollToTop />
