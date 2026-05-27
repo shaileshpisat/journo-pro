@@ -154,10 +154,15 @@ export default function JournalInput() {
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const el = e.target
+    let val = el.value
+    if (val.startsWith('-')) {
+      val = val.slice(1)
+      setMarkTask((p) => !p)
+    }
     el.style.height = 'auto'
     el.style.height = `${el.scrollHeight}px`
-    setText(el.value)
-    setSuggestion(getSuggestion(el.value, el.selectionStart))
+    setText(val)
+    setSuggestion(getSuggestion(val, el.selectionStart))
     setSelectedIndex(0)
   }
 

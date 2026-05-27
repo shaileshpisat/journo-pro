@@ -19,7 +19,7 @@ function groupByDate(tasks: Entry[]): [string, Entry[]][] {
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(t)
   }
-  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
 }
 
 export default function TasksView() {
@@ -41,7 +41,12 @@ export default function TasksView() {
 
   const handleTimerToggle = (entry: Entry) => {
     if (activeTimer?.entryId === entry.id) {
-      dispatch({ type: 'SET_TIMER', payload: null })
+      const duration = Date.now() - activeTimer.startedAt + (activeTimer.baseElapsed || 0)
+      dispatch({ type: 'LOG_TIME', payload: { entryId: entry.id, log: { startedAt: activeTimer.startedAt, duration } } })
+    } else if (activeTimer) {
+      const duration = Date.now() - activeTimer.startedAt + (activeTimer.baseElapsed || 0)
+      dispatch({ type: 'LOG_TIME', payload: { entryId: activeTimer.entryId, log: { startedAt: activeTimer.startedAt, duration } } })
+      dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
     } else {
       dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
     }

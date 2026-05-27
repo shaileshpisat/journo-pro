@@ -294,6 +294,13 @@ export default function EntryDetail() {
         type: 'LOG_TIME',
         payload: { entryId: entry.id, log: { startedAt: state.activeTimer.startedAt, duration } },
       })
+    } else if (state.activeTimer) {
+      const duration = Date.now() - state.activeTimer.startedAt + (state.activeTimer.baseElapsed || 0)
+      dispatch({
+        type: 'LOG_TIME',
+        payload: { entryId: state.activeTimer.entryId, log: { startedAt: state.activeTimer.startedAt, duration } },
+      })
+      dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
     } else {
       dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
     }

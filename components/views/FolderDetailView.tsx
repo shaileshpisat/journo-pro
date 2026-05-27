@@ -124,7 +124,12 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
 
   const handleTimerToggle = (entry: Entry) => {
     if (activeTimer?.entryId === entry.id) {
-      dispatch({ type: 'SET_TIMER', payload: null })
+      const duration = Date.now() - activeTimer.startedAt + (activeTimer.baseElapsed || 0)
+      dispatch({ type: 'LOG_TIME', payload: { entryId: entry.id, log: { startedAt: activeTimer.startedAt, duration } } })
+    } else if (activeTimer) {
+      const duration = Date.now() - activeTimer.startedAt + (activeTimer.baseElapsed || 0)
+      dispatch({ type: 'LOG_TIME', payload: { entryId: activeTimer.entryId, log: { startedAt: activeTimer.startedAt, duration } } })
+      dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
     } else {
       dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
     }

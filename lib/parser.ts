@@ -52,7 +52,7 @@ export function parseEntry(text: string): Partial<Entry> {
     if (parsedDate) result.actionDate = parsedDate
   }
 
-  const amtMatch = text.match(/[\$₹€£]?\s?(\d[\d,]*(?:\.\d+)?)\s?[kK]?/)
+  const amtMatch = text.match(/[\$₹€£]\s?(\d[\d,]*(?:\.\d+)?)\s?[kK]?/)
   if (amtMatch) {
     let val = parseFloat(amtMatch[1].replace(/,/g, ''))
     if (amtMatch[0].toLowerCase().includes('k')) val *= 1000

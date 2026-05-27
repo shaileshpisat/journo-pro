@@ -105,23 +105,44 @@ function TimeRow({ entryText, startedAt, duration, description }: TimeLogRowData
       fontSize: 12,
       lineHeight: 1.4,
       border: '1px dashed var(--color-border)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 16,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-        <Icon name="stopwatch" size={11} color="var(--color-accent)" />
-        <span style={{ fontWeight: 500, color: 'var(--color-text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {entryText.slice(0, 40)}{entryText.length > 40 ? '…' : ''}
-        </span>
-        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--color-text2)', flexShrink: 0 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+          <Icon name="stopwatch" size={11} color="var(--color-accent)" />
+          <span style={{ fontWeight: 500, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {entryText.slice(0, 40)}{entryText.length > 40 ? '…' : ''}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 17 }}>
+          <span style={{ fontSize: 10, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace", flexShrink: 0 }}>
+            {new Date(startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+          </span>
+          {description && (
+            <span style={{ fontSize: 11, color: 'var(--color-text3)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {description}
+            </span>
+          )}
+        </div>
+      </div>
+      <div style={{
+        flexShrink: 0,
+        background: 'var(--color-accent-light)',
+        borderRadius: 8,
+        padding: '8px 16px',
+        textAlign: 'center',
+        minWidth: 70,
+      }}>
+        <span style={{
+          fontFamily: "'DM Mono', monospace",
+          fontSize: 18,
+          fontWeight: 600,
+          color: 'var(--color-accent)',
+        }}>
           {fmtDuration(duration)}
         </span>
-      </div>
-      {description && (
-        <div style={{ paddingLeft: 17, fontSize: 11, color: 'var(--color-text3)', lineHeight: 1.4 }}>
-          {description}
-        </div>
-      )}
-      <div style={{ paddingLeft: 17, fontSize: 10, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace", marginTop: 1 }}>
-        {new Date(startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
       </div>
     </div>
   )
@@ -203,130 +224,137 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
             />
           </div>
           <div style={{ flex: 1, paddingBottom: 14 }}>
-            {byHour[h]?.map((e) => {
-              const amt = fmtAmt(e.amount, e.amountType, currency)
-              const isActive = activeTimer?.entryId === e.id
-              return (
-                <div
-                  key={e.id}
-                  onClick={() => onClick(e)}
-                  style={{
-                    background: '#fff',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 8,
-                    padding: '9px 13px',
-                    marginBottom: 6,
-                    cursor: 'pointer',
-                    transition: 'box-shadow 0.15s, border-color 0.15s',
-                  }}
-                  onMouseEnter={(ev) => {
-                    ev.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.07)'
-                    ev.currentTarget.style.borderColor = '#ccc'
-                  }}
-                  onMouseLeave={(ev) => {
-                    ev.currentTarget.style.boxShadow = 'none'
-                    ev.currentTarget.style.borderColor = 'var(--color-border)'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flex: 1 }}>
-                      {onTaskToggle && e.isTask && (
-                        <button
-                          onClick={(ev) => {
-                            ev.stopPropagation()
-                            onTaskToggle(e)
-                          }}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '1px 0 0 0',
-                            color: e.isTaskDone ? 'var(--color-accent)' : 'var(--color-text3)',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Icon name={e.isTaskDone ? 'checkSquare' : 'square'} size={13} />
-                        </button>
-                      )}
-                      <p style={{
-                        fontSize: 13,
-                        color: e.isTaskDone ? 'var(--color-text3)' : 'var(--color-text)',
-                        lineHeight: 1.45,
-                        margin: 0,
-                        textDecoration: e.isTaskDone ? 'line-through' : 'none',
-                      }}>
-                        {e.text}
-                      </p>
+            {[
+              ...(byHour[h]?.map(e => ({ type: 'entry' as const, ts: new Date(e.timestamp).getTime(), data: e })) || []),
+              ...(histByHour[h]?.map(item => ({ type: 'history' as const, ts: item.timestamp, data: item })) || []),
+              ...(timeByHour[h]?.map(item => ({ type: 'time' as const, ts: item.startedAt, data: item })) || []),
+            ].sort((a, b) => a.ts - b.ts).map((item) => {
+              if (item.type === 'entry') {
+                const e = item.data
+                const amt = fmtAmt(e.amount, e.amountType, currency)
+                const isActive = activeTimer?.entryId === e.id
+                return (
+                  <div
+                    key={e.id}
+                    onClick={() => onClick(e)}
+                    style={{
+                      background: '#fff',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 8,
+                      padding: '9px 13px',
+                      marginBottom: 6,
+                      cursor: 'pointer',
+                      transition: 'box-shadow 0.15s, border-color 0.15s',
+                    }}
+                    onMouseEnter={(ev) => {
+                      ev.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.07)'
+                      ev.currentTarget.style.borderColor = '#ccc'
+                    }}
+                    onMouseLeave={(ev) => {
+                      ev.currentTarget.style.boxShadow = 'none'
+                      ev.currentTarget.style.borderColor = 'var(--color-border)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flex: 1 }}>
+                        {onTaskToggle && e.isTask && (
+                          <button
+                            onClick={(ev) => {
+                              ev.stopPropagation()
+                              onTaskToggle(e)
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '1px 0 0 0',
+                              color: e.isTaskDone ? 'var(--color-accent)' : 'var(--color-text3)',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Icon name={e.isTaskDone ? 'checkSquare' : 'square'} size={13} />
+                          </button>
+                        )}
+                        <p style={{
+                          fontSize: 13,
+                          color: e.isTaskDone ? 'var(--color-text3)' : 'var(--color-text)',
+                          lineHeight: 1.45,
+                          margin: 0,
+                          textDecoration: e.isTaskDone ? 'line-through' : 'none',
+                        }}>
+                          {e.text}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        {amt && (
+                          <span
+                            style={{
+                              fontFamily: "'DM Mono', monospace",
+                              fontSize: 12,
+                              fontWeight: 500,
+                              color: amt.color,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {amt.label}
+                          </span>
+                        )}
+                        {onTimerToggle && (
+                          <button
+                            onClick={(ev) => {
+                              ev.stopPropagation()
+                              onTimerToggle(e)
+                            }}
+                            style={{
+                              background: isActive ? 'var(--color-red-light)' : 'var(--color-bg2)',
+                              border: `1px solid ${isActive ? 'var(--color-red)' : 'var(--color-border)'}`,
+                              borderRadius: 6,
+                              padding: '3px 6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              color: isActive ? 'var(--color-red)' : 'var(--color-text3)',
+                            }}
+                          >
+                            <Icon name={isActive ? 'pause' : 'stopwatch'} size={12} />
+                            {isActive && <span style={{ fontSize: 11, fontWeight: 500 }}>Running</span>}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                      {amt && (
-                        <span
-                          style={{
-                            fontFamily: "'DM Mono', monospace",
-                            fontSize: 12,
-                            fontWeight: 500,
-                            color: amt.color,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {amt.label}
-                        </span>
-                      )}
-                      {onTimerToggle && (
-                        <button
-                          onClick={(ev) => {
-                            ev.stopPropagation()
-                            onTimerToggle(e)
-                          }}
-                          style={{
-                            background: isActive ? 'var(--color-red-light)' : 'var(--color-bg2)',
-                            border: `1px solid ${isActive ? 'var(--color-red)' : 'var(--color-border)'}`,
-                            borderRadius: 6,
-                            padding: '3px 6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            color: isActive ? 'var(--color-red)' : 'var(--color-text3)',
-                          }}
-                        >
-                          <Icon name={isActive ? 'pause' : 'stopwatch'} size={12} />
-                          {isActive && <span style={{ fontSize: 11, fontWeight: 500 }}>Running</span>}
-                        </button>
-                      )}
+                    {e.actionDate && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11, color: isOverdue(e) ? 'var(--color-red)' : 'var(--color-amber)', fontWeight: 500 }}>
+                        <Icon name="clock" size={11} />
+                        {fmtDate(e.actionDate)}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 5, alignItems: 'center' }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: 'var(--color-text3)',
+                          fontFamily: "'DM Mono', monospace",
+                        }}
+                      >
+                        {fmtTime(e.timestamp)}
+                      </span>
+                      {e.entity && <Chip icon="entity" label={e.entity} small />}
+                      {e.folder && <FolderChip path={e.folder} small />}
+                      {e.tags.map((t) => (
+                        <Chip key={t} label={`#${t}`} small />
+                      ))}
                     </div>
                   </div>
-                  {e.actionDate && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11, color: isOverdue(e) ? 'var(--color-red)' : 'var(--color-amber)', fontWeight: 500 }}>
-                      <Icon name="clock" size={11} />
-                      {fmtDate(e.actionDate)}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 5, alignItems: 'center' }}>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: 'var(--color-text3)',
-                        fontFamily: "'DM Mono', monospace",
-                      }}
-                    >
-                      {fmtTime(e.timestamp)}
-                    </span>
-                    {e.entity && <Chip icon="entity" label={e.entity} small />}
-                    {e.folder && <FolderChip path={e.folder} small />}
-                    {e.tags.map((t) => (
-                      <Chip key={t} label={`#${t}`} small />
-                    ))}
-                  </div>
-                </div>
-              )
+                )
+              }
+              if (item.type === 'history') {
+                const hist = item.data
+                return <HistoryRow key={`h-${hist.timestamp}`} history={hist.history} entryText={hist.entryText} timestamp={hist.timestamp} currency={currency} />
+              }
+              const t = item.data
+              return <TimeRow key={`t-${t.startedAt}`} entryText={t.entryText} entryId={t.entryId} startedAt={t.startedAt} duration={t.duration} description={t.description} />
             })}
-            {histByHour[h]?.map((item, i) => (
-              <HistoryRow key={`h-${i}`} history={item.history} entryText={item.entryText} timestamp={item.timestamp} currency={currency} />
-            ))}
-            {timeByHour[h]?.map((item, i) => (
-              <TimeRow key={`t-${i}`} entryText={item.entryText} entryId={item.entryId} startedAt={item.startedAt} duration={item.duration} description={item.description} />
-            ))}
           </div>
         </div>
       ))}

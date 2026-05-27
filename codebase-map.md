@@ -480,6 +480,7 @@ Hover reveals a comment button (messageSquare icon with count) that opens EntryD
 No props — reads `dispatch` from context.
 - Calls `parseEntry()` on every keystroke
 - Auto-grows textarea height via `el.style.height`
+- Leading `-` stripped from text and sets `markTask = true` (task toggle)
 - Submit: `Cmd/Ctrl+Enter` or button
 - Creates entry with `id: Date.now()`, `timestamp: new Date().toISOString()`
 - Dispatches `ADD_ENTRY`
@@ -581,7 +582,9 @@ Sections (in order):
 #### `SearchView.tsx`
 State: `filtersOpen` (local); all filter state lives in the global `state.searchFilters` (`SearchFilters`) and persists to `localStorage` under `jp_searchFilters`.
 
-Filter logic: AND combination across filter types. Text search checks `entry.text` and `entry.entity` (case-insensitive). Entity/Folder use OR (entry matches any selected). **Tag filter uses scored sorting**: entries matching all selected tags appear first, then those matching a subset (scored by match count), then those matching at least 1. Date range checks `entry.timestamp.slice(0, 10)`. A "Tasks" toggle switch filters to entries where `isTask === true`.
+Filter logic: AND combination across filter types. Text search checks `entry.text` and `entry.entity` (case-insensitive). Entity/Folder use OR (entry matches any selected). **Tag filter uses scored sorting**: entries matching all selected tags appear first, then those matching a subset (scored by match count), then those matching at least 1. Date range checks `entry.timestamp.slice(0, 10)`. A "Tasks" toggle switch filters to entries where `isTask === true && isTaskDone === false`.
+
+Search filters are stored in global `state.searchFilters` (persisted to `jp_searchFilters`). They are reset to `DEFAULT_SEARCH_FILTERS` whenever `SET_VIEW` is dispatched (sidebar/folder navigation). They survive EntryDetail open/close because EntryDetail overlays rather than replacing the view.
 
 Filter UI uses `<SearchableSelect multi>` for Entity, Folder, Tag — each with searchable dropdown and checkboxes. Filter chips appear as `<Chip>` with `onRemove` when filter panel is closed (one chip per selected value). A pill toggle between the search input and Filters button toggles `tasksOnly`.
 
@@ -633,10 +636,11 @@ User presses Cmd+Enter (or clicks button)
 ```
 User clicks EntryCard
   → dispatch SELECT_ENTRY(entry)
-  → App.tsx renders <EntryDetail> instead of active view
+  → App.tsx overlays <EntryDetail> on top of current view (position: absolute, inset: 0)
+  → Current view stays mounted, preserving all local state + scroll position
 User clicks Back
   → dispatch SELECT_ENTRY(null)
-  → Previous view resumes
+  → EntryDetail overlay removed; previous view visible with state intact
 ```
 
 ### Moving a folder
@@ -655,11 +659,14 @@ User selects destination → clicks "Move here"
 
 ```
 User clicks stopwatch on EntryCard / EntryDetail
-  → dispatch SET_TIMER({ entryId, startedAt: Date.now(), baseElapsed: 0 })
+  → If timer running for same entry: dispatch LOG_TIME (records elapsed), timer stops
+  → If timer running for different entry: dispatch LOG_TIME for old entry,
+    then dispatch SET_TIMER for new entry → timer switches
+  → If no timer running: dispatch SET_TIMER({ entryId, startedAt, baseElapsed: 0 })
   → FloatingTimer appears (fixed bottom-right)
   → setInterval updates elapsed every 200ms
-User clicks Stop
-  → dispatch SET_TIMER(null)
+User clicks Stop button on FloatingTimer
+  → dispatch LOG_TIME with duration + description
   → FloatingTimer disappears
 ```
 
@@ -670,6 +677,8 @@ Sidebar NavItem click → dispatch SET_VIEW('inbox')
 Folder in sidebar    → dispatch SET_VIEW('folder:Clients/Acme Corp')
 FolderTreeNode click → dispatch SET_VIEW('folder:' + node.path)
 ```
+
+Sidebar navigation (`SET_VIEW`) also resets `searchFilters` to `DEFAULT_SEARCH_FILTERS` and unmounts the current view (resetting its local filter state). Entry overlay (`SELECT_ENTRY`) does NOT trigger SET_VIEW, so filters survive entry detail navigation.
 
 ---
 

@@ -10,14 +10,19 @@ export default function InboxView() {
   const { state, dispatch } = useAppState()
   const { entries, activeTimer } = state
 
-  const activeEntries = entries.filter((e) => !e.archived)
+  const activeEntries = entries.filter((e) => !e.archived && !e.isTaskDone)
   const noFolder = activeEntries.filter((e) => !e.folder && !isOverdue(e))
   const overdue = activeEntries.filter((e) => isOverdue(e))
   const withActionDate = activeEntries.filter((e) => e.folder && e.actionDate && !isOverdue(e))
 
   const handleTimerToggle = (entry: Entry) => {
     if (activeTimer?.entryId === entry.id) {
-      dispatch({ type: 'SET_TIMER', payload: null })
+      const duration = Date.now() - activeTimer.startedAt + (activeTimer.baseElapsed || 0)
+      dispatch({ type: 'LOG_TIME', payload: { entryId: entry.id, log: { startedAt: activeTimer.startedAt, duration } } })
+    } else if (activeTimer) {
+      const duration = Date.now() - activeTimer.startedAt + (activeTimer.baseElapsed || 0)
+      dispatch({ type: 'LOG_TIME', payload: { entryId: activeTimer.entryId, log: { startedAt: activeTimer.startedAt, duration } } })
+      dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
     } else {
       dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
     }
