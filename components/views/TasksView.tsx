@@ -26,6 +26,7 @@ export default function TasksView() {
   const { state, dispatch } = useAppState()
   const { entries, activeTimer } = state
   const [query, setQuery] = useState('')
+  const [futureWeeksShown, setFutureWeeksShown] = useState(0)
 
   const tasks = entries.filter((e) => e.isTask && !e.archived)
 
@@ -36,7 +37,38 @@ export default function TasksView() {
   const active = filtered.filter((e) => !e.isTaskDone)
   const completed = filtered.filter((e) => e.isTaskDone)
 
-  const activeGroups = useMemo(() => groupByDate(active), [active])
+  const tomorrowDate = new Date()
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrowStr = tomorrowDate.toISOString().split('T')[0]
+  const current = active.filter((e) => !e.actionDate || e.actionDate <= tomorrowStr)
+  const futureAll = active
+    .filter((e) => e.actionDate && e.actionDate > tomorrowStr)
+    .sort((a, b) => a.actionDate!.localeCompare(b.actionDate!))
+
+  const futureWeeks = useMemo(() => {
+    const weeks: [string, Entry[]][][] = []
+    let cur: [string, Entry[]][] | null = null
+    let weekEnd = ''
+    for (const t of futureAll) {
+      const ds = t.actionDate!
+      if (!cur || ds > weekEnd) {
+        cur = []
+        weeks.push(cur)
+        const d = new Date(ds)
+        d.setDate(d.getDate() + 6)
+        weekEnd = d.toISOString().split('T')[0]
+      }
+      let dayGroup = cur.find(([k]) => k === ds)
+      if (!dayGroup) {
+        dayGroup = [ds, []]
+        cur.push(dayGroup)
+      }
+      dayGroup[1].push(t)
+    }
+    return weeks
+  }, [futureAll])
+
+  const activeGroups = useMemo(() => groupByDate(current), [current])
   const completedGroups = useMemo(() => {
     const map = new Map<string, Entry[]>()
     for (const t of completed) {
@@ -128,6 +160,48 @@ export default function TasksView() {
               />
             ))}
           </div>
+        </div>
+      ))}
+
+      {futureWeeks.length > futureWeeksShown && (
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <button
+            onClick={() => setFutureWeeksShown((w) => w + 1)}
+            style={{
+              background: 'var(--color-bg2)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 8,
+              padding: '8px 20px',
+              fontFamily: 'inherit',
+              fontSize: 13,
+              color: 'var(--color-text2)',
+              cursor: 'pointer',
+            }}
+          >
+            Show future entries for a week
+          </button>
+        </div>
+      )}
+      {futureWeeksShown > 0 && futureWeeks.slice(0, futureWeeksShown).map((week, wi) => (
+        <div key={`fw-${wi}`} style={{ marginBottom: wi + 1 < futureWeeksShown ? 24 : 0 }}>
+          {week.map(([dateKey, group]) => (
+            <div key={dateKey} style={{ marginBottom: 16 }}>
+              <SectionHead title={fmtDate(dateKey)} count={group.length} />
+              <div style={{ display: 'grid', gap: 8 }}>
+                {group.map((e) => (
+                  <EntryCard
+                    key={e.id}
+                    entry={e}
+                    onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
+                    timerActive={activeTimer?.entryId === e.id}
+                    onTimerToggle={handleTimerToggle}
+                    onTaskToggle={handleTaskToggle}
+                    currency={state.currency}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ))}
 

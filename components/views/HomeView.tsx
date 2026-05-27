@@ -409,18 +409,19 @@ export default function HomeView() {
           }}
         >
           <SectionHead title="Action today" count={todayAction.length} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4 }}>
             {todayAction.map((e) => (
-              <EntryCard
-                key={e.id}
-                entry={e}
-                onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
-                minimal
-                timerActive={activeTimer?.entryId === e.id}
-                onTimerToggle={handleTimerToggle}
-                onTaskToggle={handleTaskToggle}
-                currency={state.currency}
-              />
+              <div key={e.id} style={{ minWidth: 260, maxWidth: 280, flexShrink: 0 }}>
+                <EntryCard
+                  entry={e}
+                  onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
+                  minimal
+                  timerActive={activeTimer?.entryId === e.id}
+                  onTimerToggle={handleTimerToggle}
+                  onTaskToggle={handleTaskToggle}
+                  currency={state.currency}
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -439,7 +440,7 @@ export default function HomeView() {
           }}
         >
           <SectionHead title="Needs action" count={overdue.length} />
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4 }}>
             {[...overdue]
               .sort((a, b) => (a.actionDate! > b.actionDate! ? 1 : -1))
               .map((e) => (

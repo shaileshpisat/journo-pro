@@ -246,6 +246,7 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
                       marginBottom: 6,
                       cursor: 'pointer',
                       transition: 'box-shadow 0.15s, border-color 0.15s',
+                      overflow: 'hidden',
                     }}
                     onMouseEnter={(ev) => {
                       ev.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.07)'

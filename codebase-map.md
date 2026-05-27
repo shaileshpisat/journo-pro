@@ -683,6 +683,13 @@ Timer button behavior:
   - Entry has active timer running: shows pause icon + "Running" in red
   - Entry has no timeLogs + no active timer: shows stopwatch icon
   - Clicking any of these triggers handleTimerToggle (start/stop/switch timer)
+
+Timer auto-stop:
+  - FloatingTimer checks elapsed every 200ms
+  - If elapsed >= 4 hours (14,400,000 ms), dispatches LOG_TIME and clears interval
+  - Plays a short 880Hz beep tone via Web Audio API before stopping
+  - Uses a ref to prevent multiple beeps/stops, and descRef for latest description text
+  - Stopped timer duration is capped at exactly 4 hours
 ```
 
 ### Completing / undoing a task

@@ -29,7 +29,7 @@ export default function AddFolderModal() {
         payload: {
           ...entry,
           folder: name,
-          text: `Folder ${name} is created`,
+          text: entry.text.trim() ? entry.text : `Folder ${name} is created`,
           history: [...(entry.history || []), { timestamp: now, field: 'folder', oldValue: entry.folder, newValue: name }],
         },
       })
