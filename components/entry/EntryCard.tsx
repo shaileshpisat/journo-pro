@@ -64,7 +64,6 @@ export default function EntryCard({
         cursor: 'pointer',
         boxShadow: hovered ? '0 2px 12px rgba(0,0,0,0.07)' : 'none',
         transition: 'box-shadow 0.15s, border-color 0.15s',
-        overflow: 'hidden',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
@@ -183,7 +182,7 @@ export default function EntryCard({
                 border: 'none',
                 cursor: 'pointer',
                 padding: '3px 4px',
-                color: hovered ? 'var(--color-text3)' : 'transparent',
+                color: 'var(--color-text3)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 3,

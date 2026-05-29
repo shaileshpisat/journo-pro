@@ -1,9 +1,23 @@
+import { useState } from 'react'
 import { Entry, TimerState, EntryHistory, TimeLog } from '@/lib/types'
 import { fmtTime, fmtAmt, fmtDate, fmtDuration } from '@/lib/formatters'
 import { isOverdue } from '@/lib/predicates'
 import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
 import Icon from '@/components/ui/Icon'
+
+function fmtAge(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  return `${months}mo ago`
+}
 
 export interface HistoryRowData {
   history: EntryHistory
@@ -149,6 +163,7 @@ function TimeRow({ entryText, startedAt, duration, description }: TimeLogRowData
 }
 
 export default function TodayTimeline({ entries, historyItems, timeTrackingItems, onClick, activeTimer, onTimerToggle, onTaskToggle, currency = '$' }: TodayTimelineProps) {
+  const [commentHoveredId, setCommentHoveredId] = useState<number | null>(null)
   const sorted = [...entries].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
   const byHour: Record<number, Entry[]> = {}
   sorted.forEach((e) => {
@@ -234,6 +249,7 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
                 const amt = fmtAmt(e.amount, e.amountType, currency)
                 const isActive = activeTimer?.entryId === e.id
                 const totalTracked = e.timeLogs ? e.timeLogs.reduce((s, l) => s + l.duration, 0) : 0
+                const lastComment = e.comments?.[e.comments.length - 1]
                 return (
                   <div
                     key={e.id}
@@ -246,7 +262,6 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
                       marginBottom: 6,
                       cursor: 'pointer',
                       transition: 'box-shadow 0.15s, border-color 0.15s',
-                      overflow: 'hidden',
                     }}
                     onMouseEnter={(ev) => {
                       ev.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.07)'
@@ -335,6 +350,67 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
                             )}
                           </button>
                         )}
+                        <div
+                          onMouseEnter={() => setCommentHoveredId(e.id)}
+                          onMouseLeave={() => setCommentHoveredId(null)}
+                          style={{ position: 'relative' }}
+                        >
+                          <button
+                            onClick={(ev) => {
+                              ev.stopPropagation()
+                              onClick(e)
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '3px 4px',
+                              color: 'var(--color-text3)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 3,
+                              borderRadius: 4,
+                              fontSize: 11,
+                              fontFamily: "'DM Mono', monospace",
+                            }}
+                          >
+                            <Icon name="messageSquare" size={12} />
+                            {(e.comments?.length ?? 0) > 0 && <span>{e.comments.length}</span>}
+                          </button>
+                          {commentHoveredId === e.id && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                bottom: '100%',
+                                right: 0,
+                                marginBottom: 6,
+                                background: '#1a1a18',
+                                color: '#fff',
+                                borderRadius: 8,
+                                padding: '8px 10px',
+                                fontSize: 11,
+                                lineHeight: 1.4,
+                                whiteSpace: 'nowrap',
+                                zIndex: 100,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                                pointerEvents: 'none',
+                              }}
+                            >
+                              {lastComment ? (
+                                <>
+                                  <div style={{ fontWeight: 500, marginBottom: 2 }}>{lastComment.text}</div>
+                                  <div style={{ opacity: 0.6, fontFamily: "'DM Mono', monospace" }}>
+                                    {new Date(lastComment.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                                    {' · '}
+                                    {fmtAge(lastComment.timestamp)}
+                                  </div>
+                                </>
+                              ) : (
+                                <span style={{ opacity: 0.6 }}>No comments</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     {e.actionDate && (
