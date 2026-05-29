@@ -33,7 +33,7 @@ export default function HomeView() {
   const todayAction = activeEntries.filter(
     (e) => e.actionDate === todayStr() && !isToday(e.timestamp)
   )
-  const overdue = activeEntries.filter((e) => isOverdue(e))
+  const overdue = activeEntries.filter((e) => isOverdue(e) && !e.isTaskDone)
 
   const todayTags = [...new Set(todayEntries.flatMap((e) => e.tags))]
   const todayFolders = [...new Set(todayEntries.filter((e) => e.folder).map((e) => e.folder!))]
