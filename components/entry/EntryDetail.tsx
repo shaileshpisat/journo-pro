@@ -20,6 +20,60 @@ const fieldInputStyle: React.CSSProperties = {
   background: 'var(--color-bg)',
 }
 
+function EntityPicker({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  options: string[]
+  placeholder?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const suggestions = options.filter((o) => o.toLowerCase().includes(value.toLowerCase()))
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <input
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        placeholder={placeholder}
+        style={fieldInputStyle}
+      />
+      {open && suggestions.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 2,
+          background: '#fff', border: '1px solid var(--color-border)',
+          borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+          zIndex: 100, maxHeight: 160, overflowY: 'auto',
+        }}>
+          {suggestions.map((o) => (
+            <div
+              key={o}
+              onMouseDown={() => { onChange(o); setOpen(false) }}
+              style={{ padding: '7px 12px', fontSize: 13, cursor: 'pointer', color: 'var(--color-text)' }}
+            >
+              {o}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MentionEditor({
   mentions,
   onChange,

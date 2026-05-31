@@ -14,7 +14,8 @@
       "Bash(cp -r src/components components)",
       "Bash(cp -r src/context context)",
       "Bash(cp -r src/hooks hooks)",
-      "Bash(cp -r src/lib lib)"
+      "Bash(cp -r src/lib lib)",
+      "Bash(npx next *)"
     ],
     "additionalDirectories": [
       "\\tmp"
