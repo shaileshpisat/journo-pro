@@ -37,10 +37,10 @@ export default function HomeView() {
 
   const todayTags = [...new Set(todayEntries.flatMap((e) => e.tags))]
   const todayFolders = [...new Set(todayEntries.filter((e) => e.folder).map((e) => e.folder!))]
-  const todayEntities = [...new Set(todayEntries.filter((e) => e.entity).map((e) => e.entity!))]
+  const todayEntities = [...new Set(todayEntries.flatMap((e) => e.mentions ?? []))]
   const tagCount = (tag: string) => todayEntries.filter((e) => e.tags.includes(tag)).length
   const folderCount = (path: string) => todayEntries.filter((e) => e.folder === path).length
-  const entityCount = (name: string) => todayEntries.filter((e) => e.entity === name).length
+  const entityCount = (name: string) => todayEntries.filter((e) => (e.mentions ?? []).includes(name)).length
   const hasSummary = todayTags.length || todayFolders.length || todayEntities.length
 
   const todayHistory = useMemo(() => {

@@ -140,7 +140,7 @@ interface Entry {
   folder: string | null // Slash-delimited path: "Clients/Acme Corp"
   amount: number | null
   amountType: 'inflow' | 'outflow' | null
-  entity: string | null // Parsed from @entity
+  mentions: string[]    // Parsed from @mention (supports multiple)
   timeLogs: TimeLog[]   // Timer tracking entries
   history: EntryHistory[] // Audit trail of changes
   isTask: boolean       // Marked as task

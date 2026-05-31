@@ -27,15 +27,15 @@ export default function SearchView() {
 
   const [filtersOpen, setFiltersOpen] = useState(false)
 
-  const allEntities = [...new Set(activeEntries.filter((e) => e.entity).map((e) => e.entity!))].sort()
+  const allEntities = [...new Set(activeEntries.flatMap((e) => e.mentions ?? []))].sort()
   const allFolders = getAllFolderPaths(activeEntries).sort()
   const allTags = [...new Set(activeEntries.flatMap((e) => e.tags))].sort()
 
   const tagFiltered = filterTag.length > 0
   const results = activeEntries
     .filter((e) => {
-      if (query && !e.text.toLowerCase().includes(query.toLowerCase()) && !(e.entity || '').toLowerCase().includes(query.toLowerCase())) return false
-      if (filterEntity.length > 0 && !filterEntity.includes(e.entity || '')) return false
+      if (query && !e.text.toLowerCase().includes(query.toLowerCase()) && !(e.mentions ?? []).some((m) => m.toLowerCase().includes(query.toLowerCase()))) return false
+      if (filterEntity.length > 0 && !filterEntity.some((fe) => (e.mentions ?? []).includes(fe))) return false
       if (filterFolder.length > 0 && !filterFolder.some((f) => folderMatches(e.folder, f))) return false
       if (tasksOnly && (!e.isTask || e.isTaskDone)) return false
       if (filterFrom && e.timestamp.slice(0, 10) < filterFrom) return false
@@ -119,8 +119,8 @@ export default function SearchView() {
       {filtersOpen && (
         <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16, marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Entity</label>
-            <SearchableSelect multi value={filterEntity} onChange={(v) => setFilters({ filterEntity: v as string[] })} options={allEntities} allLabel="All entities" placeholder="Search entities…" />
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Mention</label>
+            <SearchableSelect multi value={filterEntity} onChange={(v) => setFilters({ filterEntity: v as string[] })} options={allEntities} allLabel="All mentions" placeholder="Search mentions…" formatOption={(m) => `@${m}`} />
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>Folder</label>
@@ -148,7 +148,7 @@ export default function SearchView() {
 
       {hasFilters && !filtersOpen && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-          {filterEntity.map((e) => <Chip key={e} label={e} icon="entity" bg="var(--color-bg3)" onRemove={() => setFilters({ filterEntity: filterEntity.filter((x) => x !== e) })} small />)}
+          {filterEntity.map((e) => <Chip key={e} label={`@${e}`} icon="entity" bg="var(--color-bg3)" onRemove={() => setFilters({ filterEntity: filterEntity.filter((x) => x !== e) })} small />)}
           {filterFolder.map((f) => <FolderChip key={f} path={f} small />)}
           {filterTag.map((t) => <Chip key={t} label={`#${t}`} icon="tag" bg="var(--color-bg3)" onRemove={() => setFilters({ filterTag: filterTag.filter((x) => x !== t) })} small />)}
           {filterFrom && <Chip label={`From ${filterFrom}`} icon="clock" bg="var(--color-amber-light)" color="var(--color-amber)" onRemove={() => setFilters({ filterFrom: '' })} small />}

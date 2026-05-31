@@ -35,10 +35,10 @@ function parseCaretDate(raw: string): string | null {
 }
 
 export function parseEntry(text: string): Partial<Entry> {
-  const result: Partial<Entry> = { tags: [] }
+  const result: Partial<Entry> = { tags: [], mentions: [] }
 
-  const entityMatch = text.match(/@([\w]+)/)
-  if (entityMatch) result.entity = entityMatch[1]
+  const mentionMatches = [...text.matchAll(/@([\w]+)/g)]
+  result.mentions = mentionMatches.map((m) => m[1])
 
   const tagMatches = [...text.matchAll(/#([\w]+)/g)]
   result.tags = tagMatches.map((m) => m[1])

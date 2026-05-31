@@ -66,19 +66,19 @@ export default function SettingsView() {
     window.location.reload()
   }
 
-  const allEntities = [...new Set(entries.filter((e) => e.entity).map((e) => e.entity!))]
+  const allEntities = [...new Set(entries.flatMap((e) => e.mentions ?? []))]
   const allTags = [...new Set(entries.flatMap((e) => e.tags))]
   const allFolders = [...new Set(entries.filter((e) => e.folder).map((e) => e.folder!))]
 
   const tabs = [
-    { id: 'entities' as const, label: 'Entities', icon: 'entity', list: allEntities },
+    { id: 'entities' as const, label: 'Mentions', icon: 'entity', list: allEntities },
     { id: 'tags' as const, label: 'Tags', icon: 'tag', list: allTags },
     { id: 'folders' as const, label: 'Folders', icon: 'folder', list: allFolders },
   ]
   const active = tabs.find((t) => t.id === tab)!
 
   const getCount = (item: string) => {
-    if (tab === 'entities') return entries.filter((e) => e.entity === item).length
+    if (tab === 'entities') return entries.filter((e) => (e.mentions ?? []).includes(item)).length
     if (tab === 'tags') return entries.filter((e) => e.tags.includes(item)).length
     return entries.filter((e) => e.folder === item).length
   }
@@ -91,7 +91,7 @@ export default function SettingsView() {
     }
 
     const updatedEntries = entries.map((e) => {
-      if (tab === 'entities' && e.entity === editId) return { ...e, entity: editVal }
+      if (tab === 'entities' && (e.mentions ?? []).includes(editId)) return { ...e, mentions: (e.mentions ?? []).map((m) => m === editId ? editVal : m) }
       if (tab === 'folders' && e.folder === editId) return { ...e, folder: editVal }
       if (tab === 'tags' && e.tags.includes(editId)) {
         return { ...e, tags: e.tags.map((t) => (t === editId ? editVal : t)) }
@@ -115,7 +115,7 @@ export default function SettingsView() {
         text: '',
         timestamp: new Date().toISOString(),
         actionDate: null,
-        entity: editVal,
+        mentions: [editVal],
         tags: [],
         folder: null,
         amount: 0,
@@ -134,7 +134,7 @@ export default function SettingsView() {
         text: '',
         timestamp: new Date().toISOString(),
         actionDate: null,
-        entity: null,
+        mentions: [],
         tags: [editVal],
         folder: null,
         amount: 0,
@@ -153,7 +153,7 @@ export default function SettingsView() {
         text: '',
         timestamp: new Date().toISOString(),
         actionDate: null,
-        entity: null,
+        mentions: [],
         tags: [],
         folder: editVal,
         amount: 0,
@@ -217,7 +217,7 @@ export default function SettingsView() {
         {/* Info row */}
         <div style={{ padding: '12px 16px', background: 'var(--color-bg2)', borderBottom: '1px solid var(--color-border)', fontSize: 12, color: 'var(--color-text3)' }}>
           {active.list.length === 0
-            ? `No ${active.label.toLowerCase()} yet. Add entries with @entity, #tag, or /folder syntax.`
+            ? `No ${active.label.toLowerCase()} yet. Add entries with @mention, #tag, or /folder syntax.`
             : `${active.list.length} ${active.label.toLowerCase()} derived from your entries.`}
         </div>
 

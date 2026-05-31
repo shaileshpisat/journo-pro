@@ -242,7 +242,7 @@ export default function EntryCard({
                 small
               />
             )}
-            {entry.entity && <Chip icon="entity" label={entry.entity} small />}
+            {entry.mentions?.map((m) => <Chip key={m} icon="entity" label={`@${m}`} small />)}
             {entry.isTaskDone && entry.completedAt && (
               <Chip
                 icon="check"
@@ -264,7 +264,7 @@ export default function EntryCard({
             >
               {fmtTime(entry.timestamp)}
             </span>
-            {entry.entity && <Chip icon="entity" label={entry.entity} small />}
+            {entry.mentions?.map((m) => <Chip key={m} icon="entity" label={`@${m}`} small />)}
             {entry.folder && <FolderChip path={entry.folder} small />}
             {entry.actionDate && (
               <Chip

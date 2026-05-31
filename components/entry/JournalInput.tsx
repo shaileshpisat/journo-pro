@@ -93,7 +93,7 @@ export default function JournalInput() {
   }, [text])
 
   const allEntities = useMemo(
-    () => [...new Set(state.entries.filter((e) => e.entity).map((e) => e.entity!))],
+    () => [...new Set(state.entries.flatMap((e) => e.mentions ?? []))],
     [state.entries]
   )
   const allTags = useMemo(
@@ -177,7 +177,7 @@ export default function JournalInput() {
       actionDate: parsed.actionDate || null,
       amount: parsed.amount || null,
       amountType: parsed.amountType || null,
-      entity: parsed.entity || null,
+      mentions: parsed.mentions || [],
       timeLogs: [],
         history: [],
         comments: [],
@@ -197,7 +197,7 @@ export default function JournalInput() {
   }
 
   const hasChips =
-    parsed.entity ||
+    (parsed.mentions && parsed.mentions.length) ||
     (parsed.tags && parsed.tags.length) ||
     parsed.folder ||
     parsed.amount ||
@@ -264,7 +264,7 @@ export default function JournalInput() {
                 }
               }
             }}
-            placeholder="What's on your mind? Use @entity #tag /folder $amount ^date"
+            placeholder="What's on your mind? Use @mention #tag /folder $amount ^date"
             style={{
               width: '100%',
               border: 'none',
@@ -335,9 +335,9 @@ export default function JournalInput() {
               borderTop: '1px solid var(--color-border)',
             }}
           >
-            {parsed.entity && (
-              <Chip icon="entity" label={parsed.entity} bg="var(--color-bg2)" color="var(--color-text2)" />
-            )}
+            {parsed.mentions?.map((m) => (
+              <Chip key={m} icon="entity" label={`@${m}`} bg="var(--color-bg2)" color="var(--color-text2)" />
+            ))}
             {parsed.folder && (
               <Chip
                 icon="folder"
@@ -427,7 +427,7 @@ export default function JournalInput() {
           marginTop: 8,
         }}
       >
-        All entries go to Inbox · Use @entity #tag /folder $amount ^date
+        All entries go to Inbox · Use @mention #tag /folder $amount ^date
       </p>
     </div>
   )

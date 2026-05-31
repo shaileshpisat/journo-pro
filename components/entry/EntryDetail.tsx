@@ -20,22 +20,22 @@ const fieldInputStyle: React.CSSProperties = {
   background: 'var(--color-bg)',
 }
 
-function EntityPicker({
-  value,
+function MentionEditor({
+  mentions,
   onChange,
-  options,
-  placeholder = 'Search…',
+  masterMentions,
 }: {
-  value: string
-  onChange: (v: string) => void
-  options: string[]
-  placeholder?: string
+  mentions: string[]
+  onChange: (mentions: string[]) => void
+  masterMentions: string[]
 }) {
-  const [search, setSearch] = useState(value)
+  const [input, setInput] = useState('')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  const filtered = options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+  const suggestions = masterMentions.filter(
+    (m) => !mentions.includes(m) && m.toLowerCase().includes(input.toLowerCase())
+  )
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -45,68 +45,78 @@ function EntityPicker({
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const select = (val: string) => {
-    onChange(val)
-    setSearch(val)
+  const add = (raw: string) => {
+    const mention = raw.replace(/^@/, '').trim()
+    if (mention && !mentions.includes(mention)) onChange([...mentions, mention])
+    setInput('')
     setOpen(false)
   }
 
-  const clear = () => {
-    onChange('')
-    setSearch('')
-  }
+  const remove = (mention: string) => onChange(mentions.filter((m) => m !== mention))
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <div style={{ display: 'flex', gap: 4 }}>
-        <input
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setOpen(true) }}
-          onFocus={() => setOpen(true)}
-          placeholder={placeholder}
-          style={fieldInputStyle}
-        />
-        {value && (
-          <button
-            onClick={clear}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', color: 'var(--color-text3)' }}
+    <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--color-border)' }}>
+      <div style={{ fontSize: 11, color: 'var(--color-text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <Icon name="entity" size={11} />
+        Mentions
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+        {mentions.map((m) => (
+          <span
+            key={m}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              background: 'var(--color-bg2)', border: '1px solid var(--color-border)',
+              borderRadius: 99, padding: '2px 8px', fontSize: 12, color: 'var(--color-text2)',
+            }}
           >
-            <Icon name="x" size={12} />
-          </button>
+            @{m}
+            <button
+              onClick={() => remove(m)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'var(--color-text3)' }}
+            >
+              <Icon name="x" size={10} />
+            </button>
+          </span>
+        ))}
+      </div>
+      <div ref={ref} style={{ position: 'relative', display: 'flex', gap: 6 }}>
+        <input
+          value={input}
+          onChange={(e) => { setInput(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(input) } }}
+          placeholder="Search or add mention…"
+          style={{ ...fieldInputStyle, flex: 1 }}
+        />
+        <button
+          onClick={() => add(input)}
+          style={{
+            background: 'var(--color-accent)', color: '#fff', border: 'none',
+            borderRadius: 6, padding: '4px 10px', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer',
+          }}
+        >
+          Add
+        </button>
+        {open && suggestions.length > 0 && (
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 2,
+            background: '#fff', border: '1px solid var(--color-border)',
+            borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+            zIndex: 100, maxHeight: 160, overflowY: 'auto',
+          }}>
+            {suggestions.map((m) => (
+              <div
+                key={m}
+                onMouseDown={() => add(m)}
+                style={{ padding: '7px 12px', fontSize: 13, cursor: 'pointer', color: 'var(--color-text)' }}
+              >
+                @{m}
+              </div>
+            ))}
+          </div>
         )}
       </div>
-      {open && filtered.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          right: 0,
-          marginTop: 2,
-          background: '#fff',
-          border: '1px solid var(--color-border)',
-          borderRadius: 8,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
-          zIndex: 100,
-          maxHeight: 180,
-          overflowY: 'auto',
-        }}>
-          {filtered.map((o) => (
-            <div
-              key={o}
-              onMouseDown={() => select(o)}
-              style={{
-                padding: '7px 12px',
-                fontSize: 13,
-                cursor: 'pointer',
-                background: o === value ? 'var(--color-accent-light)' : 'transparent',
-                color: o === value ? 'var(--color-accent)' : 'var(--color-text)',
-              }}
-            >
-              {o}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -224,12 +234,12 @@ export default function EntryDetail() {
   const [text, setText] = useState(entry.text)
   const [folder, setFolder] = useState(entry.folder || '')
   const [actionDate, setActionDate] = useState(entry.actionDate || '')
-  const [entity, setEntity] = useState(entry.entity || '')
+  const [mentions, setMentions] = useState(entry.mentions ?? [])
   const [amount, setAmount] = useState(entry.amount != null ? String(entry.amount) : '')
   const [amountType, setAmountType] = useState(entry.amountType || 'inflow')
   const [tags, setTags] = useState(entry.tags)
 
-  const allEntities = [...new Set(state.entries.filter((e) => e.entity).map((e) => e.entity!))]
+  const allMasterMentions = [...new Set(state.entries.flatMap((e) => e.mentions ?? []))]
   const allMasterTags = [...new Set(state.entries.flatMap((e) => e.tags))]
   const allFolders = [...new Set(state.entries.filter((e) => e.folder).map((e) => e.folder!))]
   const amt = fmtAmt(entry.amount, entry.amountType, state.currency)
@@ -250,7 +260,7 @@ export default function EntryDetail() {
     addChange('text', entry.text, text)
     addChange('folder', entry.folder, folder || null)
     addChange('actionDate', entry.actionDate, actionDate || null)
-    addChange('entity', entry.entity, entity || null)
+    addChange('mentions', entry.mentions, mentions)
     addChange('amount', entry.amount, parsedAmount)
     addChange('amountType', entry.amountType, parsedAmount != null ? amountType : null)
     addChange('tags', entry.tags, tags)
@@ -263,7 +273,7 @@ export default function EntryDetail() {
         tags,
         folder: folder || null,
         actionDate: actionDate || null,
-        entity: entity || null,
+        mentions,
         amount: parsedAmount,
         amountType: parsedAmount != null ? amountType : null,
         history: [...(entry.history || []), ...changes],
@@ -435,11 +445,6 @@ export default function EntryDetail() {
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FieldBlock label="Entity" icon="entity" value={editing ? null : entry.entity} color="var(--color-text2)">
-            {editing && (
-              <EntityPicker value={entity} onChange={setEntity} options={allEntities} placeholder="Search entity…" />
-            )}
-          </FieldBlock>
           <FieldBlock
             label="Amount" icon="amount"
             value={editing ? null : amt ? amt.label : null}
@@ -485,18 +490,27 @@ export default function EntryDetail() {
           </FieldBlock>
         </div>
 
-        {editing ? (
-          <TagEditor tags={tags} onChange={setTags} masterTags={allMasterTags} />
-        ) : entry.tags.length > 0 ? (
-          <div style={{
-            marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 6,
-            paddingTop: 14, borderTop: '1px solid var(--color-border)',
-          }}>
-            {entry.tags.map((t) => (
-              <Chip key={t} icon="tag" label={`#${t}`} />
-            ))}
-          </div>
-        ) : null}
+        <MentionEditor
+          mentions={mentions}
+          onChange={(newMentions) => {
+            setMentions(newMentions)
+            if (!editing) {
+              dispatch({ type: 'UPDATE_ENTRY', payload: { ...entry, mentions: newMentions, tags } })
+            }
+          }}
+          masterMentions={allMasterMentions}
+        />
+
+        <TagEditor
+          tags={tags}
+          onChange={(newTags) => {
+            setTags(newTags)
+            if (!editing) {
+              dispatch({ type: 'UPDATE_ENTRY', payload: { ...entry, mentions, tags: newTags } })
+            }
+          }}
+          masterTags={allMasterTags}
+        />
 
         {entry.timeLogs && entry.timeLogs.length > 0 && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--color-border)' }}>

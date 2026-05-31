@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { useAppState } from '@/context/AppContext'
 import Sidebar from '@/components/layout/Sidebar'
 import HomeView from '@/components/views/HomeView'
@@ -22,6 +23,13 @@ import Toast from '@/components/ui/Toast'
 export default function App() {
   const { state } = useAppState()
   const { view, selectedEntry, activeTimer, addFolderEntry } = state
+  const mainRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (selectedEntry) {
+      mainRef.current?.scrollTo({ top: 0 })
+    }
+  }, [selectedEntry?.id])
 
   const renderView = () => {
     if (view === 'home') return <HomeView />
@@ -41,7 +49,7 @@ export default function App() {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <Sidebar />
-      <main style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+      <main ref={mainRef} style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
         {renderView()}
         {selectedEntry && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 50, overflow: 'auto', background: 'var(--color-bg)' }}>

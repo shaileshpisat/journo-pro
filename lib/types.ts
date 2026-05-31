@@ -43,7 +43,7 @@ export interface Entry {
   folder: string | null
   amount: number | null
   amountType: AmountType | null
-  entity: string | null
+  mentions: string[]
   timeLogs: TimeLog[]
   history: EntryHistory[]
   isTask: boolean

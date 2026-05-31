@@ -196,10 +196,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const stored = window.localStorage.getItem('jp_entries')
       if (stored) {
-        const parsed: Entry[] = JSON.parse(stored)
-        const hasSubFolders = parsed.some((e) => e.folder && e.folder.includes('/'))
-        if (hasSubFolders || parsed.length > 0) {
-          dispatch({ type: 'SET_ENTRIES', payload: parsed })
+        const parsed: (Entry & { entity?: string | null })[] = JSON.parse(stored)
+        const migrated: Entry[] = parsed.map((e) => {
+          if (!('mentions' in e)) {
+            const { entity, ...rest } = e
+            return { ...rest, mentions: entity ? [entity] : [] }
+          }
+          return e as Entry
+        })
+        const hasSubFolders = migrated.some((e) => e.folder && e.folder.includes('/'))
+        if (hasSubFolders || migrated.length > 0) {
+          dispatch({ type: 'SET_ENTRIES', payload: migrated })
         }
       }
     } catch {}

@@ -16,14 +16,14 @@ export default function EntitiesView() {
 
   const entityMap = new Map<string, number>()
   activeEntries.forEach((e) => {
-    if (e.entity) {
-      entityMap.set(e.entity, (entityMap.get(e.entity) || 0) + 1)
-    }
+    (e.mentions ?? []).forEach((m) => {
+      entityMap.set(m, (entityMap.get(m) || 0) + 1)
+    })
   })
   const entities = Array.from(entityMap.entries()).sort((a, b) => b[1] - a[1])
 
   const entityEntries = selectedEntity
-    ? activeEntries.filter((e) => e.entity === selectedEntity)
+    ? activeEntries.filter((e) => (e.mentions ?? []).includes(selectedEntity))
     : []
 
   const handleTimerToggle = (entry: Entry) => {
@@ -46,13 +46,13 @@ export default function EntitiesView() {
   if (!selectedEntity) {
     return (
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
-        <h2 style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em', marginBottom: 4 }}>Entities</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em', marginBottom: 4 }}>Mentions</h2>
         <p style={{ fontSize: 13, color: 'var(--color-text3)', marginBottom: 24 }}>
-          Click an entity to see its entries.
+          Click a mention to see its entries.
         </p>
         {entities.length === 0 && (
           <p style={{ color: 'var(--color-text3)', fontSize: 14 }}>
-            No entities yet. Use @EntityName in an entry to create one.
+            No mentions yet. Use @Name in an entry to create one.
           </p>
         )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -132,7 +132,7 @@ export default function EntitiesView() {
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
         {entityEntries.length === 0 && (
-          <p style={{ color: 'var(--color-text3)', fontSize: 14 }}>No entries for this entity.</p>
+          <p style={{ color: 'var(--color-text3)', fontSize: 14 }}>No entries for this mention.</p>
         )}
         {entityEntries.map((e) => (
           <EntryCard

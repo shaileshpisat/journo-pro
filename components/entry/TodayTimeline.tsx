@@ -49,7 +49,7 @@ function fmtHistField(field: string): string {
     text: 'Text',
     folder: 'Folder',
     actionDate: 'Action date',
-    entity: 'Entity',
+    mentions: 'Mentions',
     amount: 'Amount',
     amountType: 'Type',
     tags: 'Tags',
@@ -429,7 +429,7 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
                       >
                         {fmtTime(e.timestamp)}
                       </span>
-                      {e.entity && <Chip icon="entity" label={e.entity} small />}
+                      {e.mentions?.map((m) => <Chip key={m} icon="entity" label={`@${m}`} small />)}
                       {e.folder && <FolderChip path={e.folder} small />}
                       {e.tags.map((t) => (
                         <Chip key={t} label={`#${t}`} small />

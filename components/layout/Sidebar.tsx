@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { id: 'search', label: 'Search', icon: 'search' },
   { id: 'tasks', label: 'Tasks', icon: 'check' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar' },
-  { id: 'entities', label: 'Entities', icon: 'entity' },
+  { id: 'entities', label: 'Mentions', icon: 'entity' },
   { id: 'transactions', label: 'Transactions', icon: 'transactions' },
   { id: 'archive', label: 'Archives', icon: 'archive' },
 ]
