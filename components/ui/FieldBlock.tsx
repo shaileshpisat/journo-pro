@@ -7,9 +7,10 @@ interface FieldBlockProps {
   color?: string
   mono?: boolean
   children?: React.ReactNode
+  onValueClick?: () => void
 }
 
-export default function FieldBlock({ label, icon, value, color, mono, children }: FieldBlockProps) {
+export default function FieldBlock({ label, icon, value, color, mono, children, onValueClick }: FieldBlockProps) {
   return (
     <div
       style={{
@@ -36,11 +37,15 @@ export default function FieldBlock({ label, icon, value, color, mono, children }
       </div>
       {value ? (
         <span
+          onClick={onValueClick}
           style={{
             fontSize: 14,
             fontWeight: 500,
             color: color || 'var(--color-text)',
             fontFamily: mono ? "'DM Mono', monospace" : 'inherit',
+            cursor: onValueClick ? 'pointer' : 'default',
+            textDecoration: onValueClick ? 'underline dotted' : 'none',
+            textUnderlineOffset: 3,
           }}
         >
           {value}
@@ -48,7 +53,12 @@ export default function FieldBlock({ label, icon, value, color, mono, children }
       ) : children ? (
         children
       ) : (
-        <span style={{ fontSize: 13, color: 'var(--color-text3)' }}>—</span>
+        <span
+          onClick={onValueClick}
+          style={{ fontSize: 13, color: 'var(--color-text3)', cursor: onValueClick ? 'pointer' : 'default' }}
+        >
+          —
+        </span>
       )}
     </div>
   )

@@ -282,6 +282,7 @@ export default function EntryDetail() {
   if (!entry) return null
 
   const [editing, setEditing] = useState(false)
+  const [editingActionDate, setEditingActionDate] = useState(false)
   const [commentInput, setCommentInput] = useState('')
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
   const [editingCommentText, setEditingCommentText] = useState('')
@@ -292,6 +293,7 @@ export default function EntryDetail() {
   const [amount, setAmount] = useState(entry.amount != null ? String(entry.amount) : '')
   const [amountType, setAmountType] = useState(entry.amountType || 'inflow')
   const [tags, setTags] = useState(entry.tags)
+  const actionDateInputRef = useRef<HTMLInputElement>(null)
 
   const allMasterMentions = [...new Set(state.entries.flatMap((e) => e.mentions ?? []))]
   const allMasterTags = [...new Set(state.entries.flatMap((e) => e.tags))]
@@ -350,6 +352,21 @@ export default function EntryDetail() {
       },
     })
     setCommentInput('')
+  }
+
+  const saveActionDateInline = (newDate: string) => {
+    setActionDate(newDate)
+    setEditingActionDate(false)
+    dispatch({
+      type: 'UPDATE_ENTRY',
+      payload: {
+        ...entry,
+        actionDate: newDate || null,
+        history: [...(entry.history || []), ...(newDate !== (entry.actionDate || '')
+          ? [{ timestamp: Date.now(), field: 'actionDate', oldValue: entry.actionDate, newValue: newDate || null }]
+          : [])],
+      },
+    })
   }
 
   const handleTimerToggle = () => {
@@ -498,50 +515,65 @@ export default function EntryDetail() {
           </p>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FieldBlock
-            label="Amount" icon="amount"
-            value={editing ? null : amt ? amt.label : null}
-            color={amt ? amt.color : undefined}
-            mono
-          >
-            {editing && (
-              <div style={{ display: 'flex', gap: 4 }}>
-                <input
-                  type="number" value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00"
-                  style={{ ...fieldInputStyle, flex: 1 }}
-                />
-                <select
-                  value={amountType}
-                  onChange={(e) => setAmountType(e.target.value as 'inflow' | 'outflow')}
-                  style={{ ...fieldInputStyle, width: 'auto' }}
-                >
-                  <option value="inflow">In</option>
-                  <option value="outflow">Out</option>
-                </select>
-              </div>
-            )}
-          </FieldBlock>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <FieldBlock label="Folder" icon="folder" value={editing ? null : entry.folder} color="var(--color-accent)">
             {editing && (
               <EntityPicker value={folder} onChange={setFolder} options={allFolders} placeholder="Search folder…" />
             )}
           </FieldBlock>
-          <FieldBlock
-            label="Action date" icon="clock"
-            value={editing ? null : entry.actionDate ? fmtDate(entry.actionDate) : null}
-            color="var(--color-amber)"
-          >
-            {editing && (
-              <input
-                type="date" value={actionDate}
-                onChange={(e) => setActionDate(e.target.value)}
-                style={fieldInputStyle}
-              />
-            )}
-          </FieldBlock>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <FieldBlock
+              label="Amount" icon="amount"
+              value={editing ? null : amt ? amt.label : null}
+              color={amt ? amt.color : undefined}
+              mono
+            >
+              {editing && (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <input
+                    type="number" value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    style={{ ...fieldInputStyle, flex: 1 }}
+                  />
+                  <select
+                    value={amountType}
+                    onChange={(e) => setAmountType(e.target.value as 'inflow' | 'outflow')}
+                    style={{ ...fieldInputStyle, width: 'auto' }}
+                  >
+                    <option value="inflow">In</option>
+                    <option value="outflow">Out</option>
+                  </select>
+                </div>
+              )}
+            </FieldBlock>
+            <FieldBlock
+              label="Action date" icon="clock"
+              value={editing || editingActionDate ? null : entry.actionDate ? fmtDate(entry.actionDate) : null}
+              color="var(--color-amber)"
+              onValueClick={!editing ? () => {
+                setEditingActionDate(true)
+                setTimeout(() => actionDateInputRef.current?.showPicker?.(), 50)
+              } : undefined}
+            >
+              {(editing || editingActionDate) && (
+                <input
+                  ref={editingActionDate ? actionDateInputRef : undefined}
+                  type="date" value={actionDate}
+                  onChange={(e) => {
+                    if (editing) {
+                      setActionDate(e.target.value)
+                    } else {
+                      saveActionDateInline(e.target.value)
+                    }
+                  }}
+                  onBlur={() => { if (editingActionDate) setEditingActionDate(false) }}
+                  style={fieldInputStyle}
+                  autoFocus={editingActionDate}
+                />
+              )}
+            </FieldBlock>
+          </div>
         </div>
 
         <MentionEditor

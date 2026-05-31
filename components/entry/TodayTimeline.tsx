@@ -243,7 +243,7 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
               ...(byHour[h]?.map(e => ({ type: 'entry' as const, ts: new Date(e.timestamp).getTime(), data: e })) || []),
               ...(histByHour[h]?.map(item => ({ type: 'history' as const, ts: item.timestamp, data: item })) || []),
               ...(timeByHour[h]?.map(item => ({ type: 'time' as const, ts: item.startedAt, data: item })) || []),
-            ].sort((a, b) => a.ts - b.ts).map((item) => {
+            ].sort((a, b) => a.ts - b.ts).map((item, idx) => {
               if (item.type === 'entry') {
                 const e = item.data
                 const amt = fmtAmt(e.amount, e.amountType, currency)
@@ -440,7 +440,7 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
               }
               if (item.type === 'history') {
                 const hist = item.data
-                return <HistoryRow key={`h-${hist.timestamp}`} history={hist.history} entryText={hist.entryText} timestamp={hist.timestamp} currency={currency} />
+                return <HistoryRow key={`h-${hist.timestamp}-${idx}`} history={hist.history} entryText={hist.entryText} timestamp={hist.timestamp} currency={currency} />
               }
               const t = item.data
               return <TimeRow key={`t-${t.startedAt}`} entryText={t.entryText} entryId={t.entryId} startedAt={t.startedAt} duration={t.duration} description={t.description} />
