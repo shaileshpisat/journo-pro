@@ -562,6 +562,31 @@ export default function EntryDetail() {
           </div>
         </div>
 
+        {editing && (
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+            <button
+              onClick={() => setEditing(false)}
+              style={{
+                background: 'var(--color-bg2)', color: 'var(--color-text2)',
+                border: '1px solid var(--color-border)', borderRadius: 8,
+                padding: '7px 14px', fontFamily: 'inherit', fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={save}
+              style={{
+                background: 'var(--color-accent)', color: '#fff', border: 'none',
+                borderRadius: 8, padding: '7px 16px', fontFamily: 'inherit',
+                fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              }}
+            >
+              Save changes
+            </button>
+          </div>
+        )}
+
         <MentionEditor
           mentions={mentions}
           onChange={(newMentions) => {
@@ -754,30 +779,6 @@ export default function EntryDetail() {
           </div>
         )}
 
-        {editing && (
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-            <button
-              onClick={() => setEditing(false)}
-              style={{
-                background: 'var(--color-bg2)', color: 'var(--color-text2)',
-                border: '1px solid var(--color-border)', borderRadius: 8,
-                padding: '7px 14px', fontFamily: 'inherit', fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={save}
-              style={{
-                background: 'var(--color-accent)', color: '#fff', border: 'none',
-                borderRadius: 8, padding: '7px 16px', fontFamily: 'inherit',
-                fontSize: 13, fontWeight: 500, cursor: 'pointer',
-              }}
-            >
-              Save changes
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )
