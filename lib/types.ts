@@ -32,6 +32,7 @@ export type ViewName =
   | 'archive'
   | 'entities'
   | 'transactions'
+  | 'parallel'
   | `folder:${string}`
 
 export interface Entry {
@@ -69,10 +70,15 @@ export interface SearchFilters {
   tasksOnly: boolean
 }
 
+export interface TimerSegment {
+  startedAt: number
+  pausedAt?: number
+  description: string
+}
+
 export interface TimerState {
   entryId: number
-  startedAt: number
-  baseElapsed: number
+  segments: TimerSegment[]
 }
 
 export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
@@ -90,7 +96,7 @@ export interface AppState {
   view: ViewName
   selectedEntry: Entry | null
   sidebarCollapsed: boolean
-  activeTimer: TimerState | null
+  activeTimers: TimerState[]
   addFolderEntry: Entry | null
   currency: CurrencySymbol
   searchFilters: SearchFilters
@@ -105,7 +111,10 @@ export type Action =
   | { type: 'SET_VIEW'; payload: ViewName }
   | { type: 'SELECT_ENTRY'; payload: Entry | null }
   | { type: 'TOGGLE_SIDEBAR' }
-  | { type: 'SET_TIMER'; payload: TimerState | null }
+  | { type: 'SET_TIMER'; payload: TimerState }
+  | { type: 'REMOVE_TIMER'; payload: { entryId: number } }
+  | { type: 'PAUSE_TIMER'; payload: { entryId: number } }
+  | { type: 'RESUME_TIMER'; payload: { entryId: number } }
   | { type: 'LOG_TIME'; payload: { entryId: number; log: TimeLog } }
   | { type: 'SET_ADD_FOLDER_ENTRY'; payload: Entry | null }
   | { type: 'MOVE_FOLDER'; payload: { oldPath: string; newPath: string } }

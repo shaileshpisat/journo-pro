@@ -1,7 +1,7 @@
 # JournoPro — Codebase Map
 
 > Reference document for feature development and bug fixes.
-> Last updated: 2026-05-27
+> Last updated: 2026-06-02
 
 ---
 
@@ -102,15 +102,16 @@ src/
 │   ├── modals/
 │   │   ├── AddFolderModal.tsx  # Assign entry to folder
 │   │   └── MoveFolderModal.tsx # Move folder to new parent
-│   ├── FloatingTimer.tsx     # Fixed bottom timer bar
-│   └── views/
-│       ├── HomeView.tsx
-│       ├── InboxView.tsx
-│       ├── SearchView.tsx
-│       ├── CalendarView.tsx
-│       ├── FoldersView.tsx
-│       ├── FolderDetailView.tsx
-│       └── SettingsView.tsx
+│       ├── FloatingTimer.tsx     # Fixed top timer bar (parallel timers)
+│       └── views/
+│           ├── HomeView.tsx
+│           ├── InboxView.tsx
+│           ├── SearchView.tsx
+│           ├── CalendarView.tsx
+│           ├── FoldersView.tsx
+│           ├── FolderDetailView.tsx
+│           ├── ParallelView.tsx   # Weekly hourly blocks per timer
+│           └── SettingsView.tsx
 └── App.tsx                   # View router shell
 ```
 
@@ -167,13 +168,18 @@ interface FolderNode {
 type CurrencySymbol = '$' | '€' | '£' | '₹' | '¥' | '₽' | '₩'
 ```
 
-### `TimerState` — active timer
+### `TimerState` — active timer (parallel)
 
 ```ts
+interface TimerSegment {
+  startedAt: number       // Date.now()
+  pausedAt?: number       // undefined = running
+  description: string
+}
+
 interface TimerState {
   entryId: number
-  startedAt: number  // Date.now()
-  baseElapsed: number
+  segments: TimerSegment[]  // supports pause/resume
 }
 ```
 
@@ -182,7 +188,7 @@ interface TimerState {
 ```ts
 type ViewName =
   | 'home' | 'inbox' | 'search' | 'calendar'
-  | 'folders' | 'settings'
+  | 'folders' | 'settings' | 'parallel'
   | `folder:${string}`   // e.g. "folder:Clients/Acme Corp"
 ```
 
@@ -200,7 +206,7 @@ type ViewName =
   view: ViewName           // Active view
   selectedEntry: Entry | null   // Opens EntryDetail overlay
   sidebarCollapsed: boolean
-  activeTimer: TimerState | null
+  activeTimers: TimerState[]
   addFolderEntry: Entry | null  // Opens AddFolderModal
   currency: CurrencySymbol
   searchFilters: SearchFilters  // Persistent search view filters (query, filterEntity, filterFolder, filterTag, filterFrom, filterTo, tasksOnly)
@@ -219,7 +225,11 @@ type ViewName =
 | `SET_VIEW` | `ViewName` | Change active view; clears selectedEntry AND resets `searchFilters` to `DEFAULT_SEARCH_FILTERS` |
 | `SELECT_ENTRY` | `Entry \| null` | Open/close EntryDetail overlay |
 | `TOGGLE_SIDEBAR` | — | Toggle sidebarCollapsed |
-| `SET_TIMER` | `TimerState \| null` | Start/stop timer |
+| `SET_TIMER` | `TimerState` | Start a new parallel timer (appends to array) |
+| `REMOVE_TIMER` | `{ entryId: number }` | Remove a timer from activeTimers |
+| `PAUSE_TIMER` | `{ entryId: number }` | Pause a specific timer by entryId |
+| `RESUME_TIMER` | `{ entryId: number }` | Resume a specific timer by entryId |
+| `LOG_TIME` | `{ entryId: number, log: TimeLog }` | Log time + remove timer from activeTimers |
 | `SET_ADD_FOLDER_ENTRY` | `Entry \| null` | Open/close AddFolderModal |
 | `MOVE_FOLDER` | `{ oldPath, newPath }` | Rename folder path on all matching entries |
 | `ADD_COMMENT` | `{ entryId: number, comment: Comment }` | Append comment to entry.comments; records `commentAdded` in history |
@@ -231,8 +241,8 @@ type ViewName =
 
 ### localStorage sync
 
-- On **mount**: reads `jp_entries`, `jp_view`, `jp_activeTimer`, `jp_currency`, and `jp_searchFilters` once via `useEffect` + `useRef` guard.
-- On **state change**: `useEffect` watching `state.entries` → saves to `jp_entries`; same for `state.view`, `state.activeTimer`, `state.currency`, and `state.searchFilters`.
+- On **mount**: reads `jp_entries`, `jp_view`, `jp_activeTimers`, `jp_currency`, and `jp_searchFilters` once via `useEffect` + `useRef` guard.
+- On **state change**: `useEffect` watching `state.entries` → saves to `jp_entries`; same for `state.view`, `state.activeTimers`, `state.currency`, and `state.searchFilters`.
 - **Seed data**: If localStorage is empty, `SEED_ENTRIES` is used as initial state.
 
 ### Consuming state in components
@@ -241,6 +251,7 @@ type ViewName =
 import { useAppState } from '@/context/AppContext'
 
 const { state, dispatch } = useAppState()
+const { entries, activeTimers, view } = state
 ```
 
 ---
@@ -256,6 +267,7 @@ if (view === 'home')      → <HomeView />
 if (view === 'inbox')     → <InboxView />
 if (view === 'search')    → <SearchView />
 if (view === 'calendar')  → <CalendarView />
+if (view === 'parallel')  → <ParallelView />
 if (view === 'folders')   → <FoldersView />
 if (view === 'settings')  → <SettingsView />
 if (view.startsWith('folder:')) → <FolderDetailView key={view} folderName={view.slice(7)} />  // key forces re-mount when navigating between folders
@@ -414,7 +426,7 @@ Covers: inflows, outflows, overdue entries, today/yesterday/past entries, multip
 - Renders a fixed `↑` button (bottom-right, white circle with shadow) when `<main>` is scrolled past 300px
 - Listens for scroll on `<main>` via `document.querySelector`, not window
 - Scrolls `<main>` to top on click
-- Added to App.tsx alongside FloatingTimer
+- Uses `state.activeTimers.length > 0 ? 140 : 28` for bottom offset so it clears the FloatingTimer bar
 ```ts
 useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void]
 ```
@@ -434,7 +446,7 @@ SSR-safe generic hook. Reads from localStorage in `useEffect` (avoids hydration 
 ```tsx
 <Icon name="folder" size={16} color="var(--color-accent)" />
 ```
-Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare`
+Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare` (stopwatch added for parallel/nav)
 
 #### `Chip.tsx`
 ```tsx
@@ -495,7 +507,7 @@ No props — reads `dispatch` from context.
 - Dispatches `ADD_ENTRY`
 
 #### `TodayTimeline.tsx`
-Props: `entries`, `onClick`, `activeTimer?`, `onTimerToggle?`
+Props: `entries`, `onClick`, `activeTimers?`, `onTimerToggle?`
 
 Groups entries by hour. Renders a vertical line with dot markers and entry cards per hour. Sorted ascending within each hour.
 
@@ -561,9 +573,9 @@ Computes new folder path: `selected ? "${selected}/${leafName}" : leafName`
 Dispatches `MOVE_FOLDER` — renames all entries whose folder path starts with `node.path`.
 
 #### `FloatingTimer.tsx`
-No props. Reads `state.activeTimer` and `state.entries`.
+No props. Reads `state.activeTimers` and `state.entries`.
 
-Returns `null` if no active timer. Updates elapsed every 200ms via `setInterval` in `useEffect`. Stop button dispatches `SET_TIMER(null)`.
+Returns `null` if `activeTimers.length === 0`. Fixed full-width bar at top of content area. Renders each active timer as a horizontal card with elapsed time, description input per segment, pause/resume per timer, and log/stop buttons. Auto-stops after 2 hours with a long beep (1.2s 880Hz). Updates elapsed every 200ms via `setInterval` in `useEffect`.
 
 ---
 
@@ -612,12 +624,19 @@ Shows all entries where `folderMatches(entry.folder, folderName)` — includes s
 
 Uses **local state** for Tasks/Changes/Time toggles and tag filters. Re-mounted with a `key={view}` from App.tsx so local state resets on folder navigation. Filters survive EntryDetail open/close because EntryDetail overlaps via CSS `position: absolute` instead of replacing the view.
 
+#### `ParallelView.tsx`
+State: `weekOffset` (0 = current week)
+
+Week = Monday to Sunday. 24-hour rows in a 7-column grid. For each entry with `timeLogs` within the week, renders a color-coded block spanning the tracked hours/minutes. Block color is deterministic per entry (hash of entry.id). Clicking a block dispatches `SELECT_ENTRY` to open the entry detail overlay.
+
+Week navigation: left/right chevron buttons and "Today" button (resets to offset 0).
+
 #### `SettingsView.tsx`
 Tabbed interface showing all entities, tags, and folders derived from entries — each with usage count, inline rename, and add-new capability.
 
 Includes a **Data** section below the tabs with a currency selector and three data actions:
 - **Currency** — `<select>` dropdown dispatching `SET_CURRENCY` with one of `$ € £ ₹ ¥ ₽ ₩`.
-- **Backup** — Downloads all localStorage data (`jp_entries`, `jp_view`, `jp_activeTimer`) as a dated JSON file via `<a>` click + `URL.createObjectURL`.
+- **Backup** — Downloads all localStorage data (`jp_entries`, `jp_view`, `jp_activeTimers`) as a dated JSON file via `<a>` click + `URL.createObjectURL`.
 - **Restore** — Hidden `<input type="file">` reads a JSON backup file, writes to localStorage, then reloads the page.
 - **Reset** — Double `window.confirm`, then clears all `jp_*` localStorage keys and reloads to seed data.
 
@@ -664,32 +683,31 @@ User selects destination → clicks "Move here"
       entry.folder.startsWith(oldPath + '/') → prefix replaced
 ```
 
-### Timer
+### Timer (parallel)
 
 ```
-User clicks timer button / tracked-time display on EntryCard / EntryDetail
-  → If timer running for same entry: dispatch LOG_TIME (records elapsed), timer stops
-  → If timer running for different entry: dispatch LOG_TIME for old entry,
-    then dispatch SET_TIMER for new entry → timer switches
-  → If no timer running: dispatch SET_TIMER({ entryId, startedAt, baseElapsed: 0 })
-  → FloatingTimer appears (fixed bottom-right)
+User clicks timer button on EntryCard / EntryDetail
+  → If any active timer for this entry already: do nothing (early return)
+  → Otherwise: dispatch SET_TIMER({ entryId, segments: [{ startedAt: Date.now(), description: '' }] })
+  → Timer appended to activeTimers array
+  → FloatingTimer appears (fixed top bar), shows all timers as horizontal cards
   → setInterval updates elapsed every 200ms
-User clicks Stop button on FloatingTimer
-  → dispatch LOG_TIME with duration + description
-  → FloatingTimer disappears
+
+User clicks Stop on FloatingTimer card
+  → dispatch LOG_TIME with duration + description for that entry
+  → Timer removed from activeTimers array
 
 Timer button behavior:
   - Entry has timeLogs + no active timer: shows fmtDuration(total) in accent-colored button
   - Entry has active timer running: shows pause icon + "Running" in red
   - Entry has no timeLogs + no active timer: shows stopwatch icon
-  - Clicking any of these triggers handleTimerToggle (start/stop/switch timer)
+  - Clicking any of these triggers handleTimerToggle (starts new timer without stopping others)
 
 Timer auto-stop:
-  - FloatingTimer checks elapsed every 200ms
-  - If elapsed >= 4 hours (14,400,000 ms), dispatches LOG_TIME and clears interval
-  - Plays a short 880Hz beep tone via Web Audio API before stopping
+  - Each timer checked every 200ms in FloatingTimer
+  - If any timer elapsed >= 2 hours (7,200,000 ms), dispatches LOG_TIME and removes it
+  - Plays a long 880Hz beep tone (1.2s) via Web Audio API before stopping
   - Uses a ref to prevent multiple beeps/stops, and descRef for latest description text
-  - Stopped timer duration is capped at exactly 4 hours
 ```
 
 ### Completing / undoing a task
@@ -721,7 +739,7 @@ Sidebar navigation (`SET_VIEW`) also resets `searchFilters` to `DEFAULT_SEARCH_F
 
 ```ts
 const { state, dispatch } = useAppState()
-const { entries, activeTimer } = state
+const { entries, activeTimers } = state
 ```
 
 ### Filtering entries for a view
@@ -741,11 +759,8 @@ const folderEntries = entries.filter(e => folderMatches(e.folder, 'Clients/Acme'
 
 ```ts
 const handleTimerToggle = (entry: Entry) => {
-  if (activeTimer?.entryId === entry.id) {
-    dispatch({ type: 'SET_TIMER', payload: null })
-  } else {
-    dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
-  }
+  if (activeTimers.some((t) => t.entryId === entry.id)) return
+  dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, segments: [{ startedAt: Date.now(), description: '' }] } })
 }
 ```
 
@@ -775,7 +790,7 @@ style={{ color: 'var(--color-accent)', background: 'var(--color-accent-light)' }
 |---|---|---|
 | `jp_entries` | `Entry[]` JSON | All journal entries |
 | `jp_view` | `string` | Last active view name |
-| `jp_activeTimer` | `TimerState` JSON | Active timer (persists across refresh) |
+| `jp_activeTimers` | `TimerState[]` JSON | Active parallel timers (persists across refresh) |
 | `jp_currency` | `string` | Selected currency symbol (`$`, `€`, `£`, etc.) |
 | `jp_searchFilters` | `SearchFilters` JSON | Search view filter state (query, entity/folder/tag selections, date range, tasksOnly toggle) |
 

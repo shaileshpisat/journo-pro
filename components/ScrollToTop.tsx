@@ -1,10 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAppState } from '@/context/AppContext'
 
 export default function ScrollToTop() {
-  const { state } = useAppState()
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -27,7 +25,7 @@ export default function ScrollToTop() {
       onClick={scrollToTop}
       style={{
         position: 'fixed',
-        bottom: state.activeTimer ? 140 : 28,
+        bottom: 28,
         right: 28,
         width: 40,
         height: 40,

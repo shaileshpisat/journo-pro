@@ -18,7 +18,7 @@ function todayStr() {
 
 export default function HomeView() {
   const { state, dispatch } = useAppState()
-  const { entries, activeTimer } = state
+  const { entries, activeTimers } = state
   const [showChanges, setShowChanges] = useState(true)
   const [showTimeTracking, setShowTimeTracking] = useState(true)
   const actionTodayRef = useRef<HTMLDivElement>(null)
@@ -72,16 +72,8 @@ export default function HomeView() {
   }, [state.entries])
 
   const handleTimerToggle = (entry: import('@/lib/types').Entry) => {
-    if (activeTimer?.entryId === entry.id) {
-      const duration = Date.now() - activeTimer.startedAt + (activeTimer.baseElapsed || 0)
-      dispatch({ type: 'LOG_TIME', payload: { entryId: entry.id, log: { startedAt: activeTimer.startedAt, duration } } })
-    } else if (activeTimer) {
-      const duration = Date.now() - activeTimer.startedAt + (activeTimer.baseElapsed || 0)
-      dispatch({ type: 'LOG_TIME', payload: { entryId: activeTimer.entryId, log: { startedAt: activeTimer.startedAt, duration } } })
-      dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
-    } else {
-      dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
-    }
+    if (activeTimers.some((t) => t.entryId === entry.id)) return
+    dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, segments: [{ startedAt: Date.now(), description: '' }] } })
   }
 
   const handleTaskToggle = (entry: import('@/lib/types').Entry) => {
@@ -388,7 +380,7 @@ export default function HomeView() {
             historyItems={showChanges ? todayHistory : []}
             timeTrackingItems={showTimeTracking ? todayTimeTracking : []}
             onClick={(e) => dispatch({ type: 'SELECT_ENTRY', payload: e })}
-            activeTimer={activeTimer}
+            activeTimers={activeTimers}
             onTimerToggle={handleTimerToggle}
             onTaskToggle={handleTaskToggle}
             currency={state.currency}
@@ -416,41 +408,41 @@ export default function HomeView() {
                   entry={e}
                   onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
                   minimal
-                  timerActive={activeTimer?.entryId === e.id}
-                  onTimerToggle={handleTimerToggle}
-                  onTaskToggle={handleTaskToggle}
-                  currency={state.currency}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+timerActive={activeTimers.some((t) => t.entryId === e.id)}
+                   onTimerToggle={handleTimerToggle}
+                   onTaskToggle={handleTaskToggle}
+                   currency={state.currency}
+                 />
+               </div>
+             ))}
+           </div>
+         </div>
+       )}
 
-      {/* Needs action */}
-      {overdue.length > 0 && (
-        <div
-          ref={needsActionRef}
-          style={{
-            marginTop: 20,
-            padding: 16,
-            background: 'var(--color-red-light)',
-            borderRadius: 'var(--radius)',
-            border: '1px solid var(--color-red)',
-          }}
-        >
-          <SectionHead title="Needs action" count={overdue.length} />
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4 }}>
-            {[...overdue]
-              .sort((a, b) => (a.actionDate! > b.actionDate! ? 1 : -1))
-              .map((e) => (
-                <div key={e.id} style={{ minWidth: 260, maxWidth: 280, flexShrink: 0 }}>
-                  <EntryCard
-                    entry={e}
-                    onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
-                    overdue
-                    minimal
-                    timerActive={activeTimer?.entryId === e.id}
+       {/* Needs action */}
+       {overdue.length > 0 && (
+         <div
+           ref={needsActionRef}
+           style={{
+             marginTop: 20,
+             padding: 16,
+             background: 'var(--color-red-light)',
+             borderRadius: 'var(--radius)',
+             border: '1px solid var(--color-red)',
+           }}
+         >
+           <SectionHead title="Needs action" count={overdue.length} />
+           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4 }}>
+             {[...overdue]
+               .sort((a, b) => (a.actionDate! > b.actionDate! ? 1 : -1))
+               .map((e) => (
+                 <div key={e.id} style={{ minWidth: 260, maxWidth: 280, flexShrink: 0 }}>
+                   <EntryCard
+                     entry={e}
+                     onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
+                     overdue
+                     minimal
+                     timerActive={activeTimers.some((t) => t.entryId === e.id)}
                     onTimerToggle={handleTimerToggle}
                     onTaskToggle={handleTaskToggle}
                     currency={state.currency}

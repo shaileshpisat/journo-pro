@@ -8,7 +8,7 @@ import SectionHead from '@/components/ui/SectionHead'
 
 export default function InboxView() {
   const { state, dispatch } = useAppState()
-  const { entries, activeTimer } = state
+  const { entries, activeTimers } = state
 
   const activeEntries = entries.filter((e) => !e.archived && !e.isTaskDone)
   const noFolder = activeEntries.filter((e) => !e.folder && !isOverdue(e))
@@ -16,16 +16,8 @@ export default function InboxView() {
   const withActionDate = activeEntries.filter((e) => e.folder && e.actionDate && !isOverdue(e))
 
   const handleTimerToggle = (entry: Entry) => {
-    if (activeTimer?.entryId === entry.id) {
-      const duration = Date.now() - activeTimer.startedAt + (activeTimer.baseElapsed || 0)
-      dispatch({ type: 'LOG_TIME', payload: { entryId: entry.id, log: { startedAt: activeTimer.startedAt, duration } } })
-    } else if (activeTimer) {
-      const duration = Date.now() - activeTimer.startedAt + (activeTimer.baseElapsed || 0)
-      dispatch({ type: 'LOG_TIME', payload: { entryId: activeTimer.entryId, log: { startedAt: activeTimer.startedAt, duration } } })
-      dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
-    } else {
-      dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
-    }
+    if (activeTimers.some((t) => t.entryId === entry.id)) return
+    dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, segments: [{ startedAt: Date.now(), description: '' }] } })
   }
 
   const handleTaskToggle = (entry: Entry) => {
@@ -84,7 +76,7 @@ export default function InboxView() {
                     onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
                     overdue
                     minimal
-                    timerActive={activeTimer?.entryId === e.id}
+                    timerActive={activeTimers.some((t) => t.entryId === e.id)}
                     onTimerToggle={handleTimerToggle}
                     onTaskToggle={handleTaskToggle}
                     currency={state.currency}
@@ -105,7 +97,7 @@ export default function InboxView() {
                 key={e.id}
                 entry={e}
                 onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
-                timerActive={activeTimer?.entryId === e.id}
+                timerActive={activeTimers.some((t) => t.entryId === e.id)}
                 onTimerToggle={handleTimerToggle}
                 onTaskToggle={handleTaskToggle}
                 currency={state.currency}
@@ -125,7 +117,7 @@ export default function InboxView() {
                 <EntryCard
                   entry={e}
                   onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
-                  timerActive={activeTimer?.entryId === e.id}
+                  timerActive={activeTimers.some((t) => t.entryId === e.id)}
                   onTimerToggle={handleTimerToggle}
                   onTaskToggle={handleTaskToggle}
                   currency={state.currency}

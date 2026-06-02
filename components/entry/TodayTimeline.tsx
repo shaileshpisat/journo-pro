@@ -38,7 +38,7 @@ interface TodayTimelineProps {
   historyItems?: HistoryRowData[]
   timeTrackingItems?: TimeLogRowData[]
   onClick: (entry: Entry) => void
-  activeTimer?: TimerState | null
+  activeTimers?: TimerState[]
   onTimerToggle?: (entry: Entry) => void
   onTaskToggle?: (entry: Entry) => void
   currency?: string
@@ -162,7 +162,7 @@ function TimeRow({ entryText, startedAt, duration, description }: TimeLogRowData
   )
 }
 
-export default function TodayTimeline({ entries, historyItems, timeTrackingItems, onClick, activeTimer, onTimerToggle, onTaskToggle, currency = '$' }: TodayTimelineProps) {
+export default function TodayTimeline({ entries, historyItems, timeTrackingItems, onClick, activeTimers, onTimerToggle, onTaskToggle, currency = '$' }: TodayTimelineProps) {
   const [commentHoveredId, setCommentHoveredId] = useState<number | null>(null)
   const sorted = [...entries].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
   const byHour: Record<number, Entry[]> = {}
@@ -247,7 +247,7 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
               if (item.type === 'entry') {
                 const e = item.data
                 const amt = fmtAmt(e.amount, e.amountType, currency)
-                const isActive = activeTimer?.entryId === e.id
+                const isActive = activeTimers?.some((t) => t.entryId === e.id) ?? false
                 const totalTracked = e.timeLogs ? e.timeLogs.reduce((s, l) => s + l.duration, 0) : 0
                 const lastComment = e.comments?.[e.comments.length - 1]
                 return (

@@ -13,7 +13,7 @@ const initialState: AppState = {
   view: 'home',
   selectedEntry: null,
   sidebarCollapsed: false,
-  activeTimer: null,
+  activeTimers: [],
   addFolderEntry: null,
   currency: '$' as CurrencySymbol,
   searchFilters: { ...DEFAULT_SEARCH_FILTERS },
@@ -46,7 +46,32 @@ function reducer(state: AppState, action: Action): AppState {
     case 'TOGGLE_SIDEBAR':
       return { ...state, sidebarCollapsed: !state.sidebarCollapsed }
     case 'SET_TIMER':
-      return { ...state, activeTimer: action.payload }
+      return { ...state, activeTimers: [...state.activeTimers, action.payload] }
+    case 'REMOVE_TIMER':
+      return { ...state, activeTimers: state.activeTimers.filter((t) => t.entryId !== action.payload.entryId) }
+    case 'PAUSE_TIMER': {
+      return {
+        ...state,
+        activeTimers: state.activeTimers.map((t) => {
+          if (t.entryId !== action.payload.entryId || t.segments.length === 0) return t
+          const segs = t.segments.map((seg, i) =>
+            i === t.segments.length - 1 && seg.pausedAt === undefined
+              ? { ...seg, pausedAt: Date.now() }
+              : seg
+          )
+          return { ...t, segments: segs }
+        }),
+      }
+    }
+    case 'RESUME_TIMER': {
+      return {
+        ...state,
+        activeTimers: state.activeTimers.map((t) => {
+          if (t.entryId !== action.payload.entryId) return t
+          return { ...t, segments: [...t.segments, { startedAt: Date.now(), description: '' }] }
+        }),
+      }
+    }
     case 'LOG_TIME': {
       const { entryId, log } = action.payload
       return {
@@ -58,7 +83,7 @@ function reducer(state: AppState, action: Action): AppState {
           state.selectedEntry?.id === entryId
             ? { ...state.selectedEntry, timeLogs: [...(state.selectedEntry.timeLogs ?? []), log] }
             : state.selectedEntry,
-        activeTimer: null,
+        activeTimers: state.activeTimers.filter((t) => t.entryId !== entryId),
       }
     }
     case 'SET_ADD_FOLDER_ENTRY':
@@ -215,10 +240,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (storedView) dispatch({ type: 'SET_VIEW', payload: storedView })
     } catch {}
     try {
-      const storedTimer = window.localStorage.getItem('jp_activeTimer')
-      if (storedTimer) {
-        const parsed: TimerState = JSON.parse(storedTimer)
-        dispatch({ type: 'SET_TIMER', payload: parsed })
+      const storedTimers = window.localStorage.getItem('jp_activeTimers')
+      if (storedTimers) {
+        const parsed: TimerState[] = JSON.parse(storedTimers)
+        for (const t of parsed) {
+          dispatch({ type: 'SET_TIMER', payload: t })
+        }
       }
     } catch {}
     try {
@@ -246,15 +273,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem('jp_view', state.view)
   }, [state.view])
 
-  // Persist active timer
+  // Persist active timers
   useEffect(() => {
     if (!hydrated.current) return
-    if (state.activeTimer) {
-      window.localStorage.setItem('jp_activeTimer', JSON.stringify(state.activeTimer))
+    if (state.activeTimers.length > 0) {
+      window.localStorage.setItem('jp_activeTimers', JSON.stringify(state.activeTimers))
     } else {
-      window.localStorage.removeItem('jp_activeTimer')
+      window.localStorage.removeItem('jp_activeTimers')
     }
-  }, [state.activeTimer])
+  }, [state.activeTimers])
 
   // Persist currency
   useEffect(() => {

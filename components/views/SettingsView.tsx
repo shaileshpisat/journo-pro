@@ -19,7 +19,7 @@ export default function SettingsView() {
       const data = {
         jp_entries: localStorage.getItem('jp_entries'),
         jp_view: localStorage.getItem('jp_view'),
-        jp_activeTimer: localStorage.getItem('jp_activeTimer'),
+        jp_activeTimers: localStorage.getItem('jp_activeTimers'),
         backedUpAt: new Date().toISOString(),
       }
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -46,7 +46,7 @@ export default function SettingsView() {
         const data = JSON.parse(event.target?.result as string)
         if (data.jp_entries) localStorage.setItem('jp_entries', data.jp_entries)
         if (data.jp_view) localStorage.setItem('jp_view', data.jp_view)
-        if (data.jp_activeTimer) localStorage.setItem('jp_activeTimer', data.jp_activeTimer)
+        if (data.jp_activeTimers) localStorage.setItem('jp_activeTimers', data.jp_activeTimers)
         window.location.reload()
       } catch {
         setStatusMsg('Invalid backup file.')
@@ -62,7 +62,7 @@ export default function SettingsView() {
     if (!window.confirm('Really delete everything? This cannot be undone.')) return
     localStorage.removeItem('jp_entries')
     localStorage.removeItem('jp_view')
-    localStorage.removeItem('jp_activeTimer')
+    localStorage.removeItem('jp_activeTimers')
     window.location.reload()
   }
 

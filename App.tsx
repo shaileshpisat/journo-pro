@@ -19,10 +19,11 @@ import FloatingTimer from '@/components/FloatingTimer'
 import ScrollToTop from '@/components/ScrollToTop'
 import AddFolderModal from '@/components/modals/AddFolderModal'
 import Toast from '@/components/ui/Toast'
+import ParallelView from '@/components/views/ParallelView'
 
 export default function App() {
   const { state } = useAppState()
-  const { view, selectedEntry, activeTimer, addFolderEntry } = state
+  const { view, selectedEntry, activeTimers, addFolderEntry } = state
   const mainRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function App() {
     if (view === 'archive') return <ArchivesView />
     if (view === 'entities') return <EntitiesView />
     if (view === 'transactions') return <TransactionsView />
+    if (view === 'parallel') return <ParallelView />
     if (view.startsWith('folder:')) return <FolderDetailView key={view} folderName={view.slice(7)} />
     return <HomeView />
   }
@@ -49,15 +51,17 @@ export default function App() {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <Sidebar />
-      <main ref={mainRef} style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-        {renderView()}
-        {selectedEntry && (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 50, overflow: 'auto', background: 'var(--color-bg)' }}>
-            <EntryDetail />
-          </div>
-        )}
-      </main>
-      {activeTimer && <FloatingTimer />}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {activeTimers.length > 0 && <FloatingTimer />}
+        <main ref={mainRef} style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+          {renderView()}
+          {selectedEntry && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 50, overflow: 'auto', background: 'var(--color-bg)' }}>
+              <EntryDetail />
+            </div>
+          )}
+        </main>
+      </div>
       <Toast />
       <ScrollToTop />
       {addFolderEntry && <AddFolderModal />}

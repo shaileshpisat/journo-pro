@@ -1,4 +1,12 @@
-import { AmountType } from './types'
+import { AmountType, TimerState } from './types'
+
+export function fmtTimeShort(ts: number): string {
+  return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+export function getTimerElapsed(timer: TimerState): number {
+  return timer.segments.reduce((sum, seg) => sum + ((seg.pausedAt ?? Date.now()) - seg.startedAt), 0)
+}
 
 export function fmtElapsed(ms: number): string {
   const s = Math.floor(ms / 1000)

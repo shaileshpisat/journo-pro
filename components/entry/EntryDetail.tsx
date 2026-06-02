@@ -299,7 +299,7 @@ export default function EntryDetail() {
   const allMasterTags = [...new Set(state.entries.flatMap((e) => e.tags))]
   const allFolders = [...new Set(state.entries.filter((e) => e.folder).map((e) => e.folder!))]
   const amt = fmtAmt(entry.amount, entry.amountType, state.currency)
-  const timerActive = state.activeTimer?.entryId === entry.id
+  const timerActive = state.activeTimers.some((t) => t.entryId === entry.id)
   const totalTracked = entry.timeLogs ? entry.timeLogs.reduce((s, l) => s + l.duration, 0) : 0
 
   const save = () => {
@@ -370,22 +370,8 @@ export default function EntryDetail() {
   }
 
   const handleTimerToggle = () => {
-    if (timerActive && state.activeTimer) {
-      const duration = Date.now() - state.activeTimer.startedAt + (state.activeTimer.baseElapsed || 0)
-      dispatch({
-        type: 'LOG_TIME',
-        payload: { entryId: entry.id, log: { startedAt: state.activeTimer.startedAt, duration } },
-      })
-    } else if (state.activeTimer) {
-      const duration = Date.now() - state.activeTimer.startedAt + (state.activeTimer.baseElapsed || 0)
-      dispatch({
-        type: 'LOG_TIME',
-        payload: { entryId: state.activeTimer.entryId, log: { startedAt: state.activeTimer.startedAt, duration } },
-      })
-      dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
-    } else {
-      dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, startedAt: Date.now(), baseElapsed: 0 } })
-    }
+    if (timerActive) return
+    dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, segments: [{ startedAt: Date.now(), description: '' }] } })
   }
 
   return (
