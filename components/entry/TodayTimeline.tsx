@@ -413,10 +413,9 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
                         </div>
                       </div>
                     </div>
-                    {e.actionDate && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11, color: isOverdue(e) ? 'var(--color-red)' : 'var(--color-amber)', fontWeight: 500 }}>
-                        <Icon name="clock" size={11} />
-                        {fmtDate(e.actionDate)}
+                    {e.folder && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 5, alignItems: 'center' }}>
+                        <FolderChip path={e.folder} small />
                       </div>
                     )}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 5, alignItems: 'center' }}>
@@ -429,8 +428,16 @@ export default function TodayTimeline({ entries, historyItems, timeTrackingItems
                       >
                         {fmtTime(e.timestamp)}
                       </span>
+                      {e.actionDate && (
+                        <Chip
+                          icon="clock"
+                          label={fmtDate(e.actionDate)}
+                          bg={isOverdue(e) ? 'var(--color-red-light)' : 'var(--color-amber-light)'}
+                          color={isOverdue(e) ? 'var(--color-red)' : 'var(--color-amber)'}
+                          small
+                        />
+                      )}
                       {e.mentions?.map((m) => <Chip key={m} icon="entity" label={`@${m}`} small />)}
-                      {e.folder && <FolderChip path={e.folder} small />}
                       {e.tags.map((t) => (
                         <Chip key={t} label={`#${t}`} small />
                       ))}

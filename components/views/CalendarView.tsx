@@ -31,7 +31,9 @@ export default function CalendarView() {
 
   const getEntriesForDay = (day: Date) => {
     const ds = fmt(day)
-    return activeEntries.filter((e) => e.timestamp.startsWith(ds) || e.actionDate === ds)
+    return activeEntries
+      .filter((e) => e.timestamp.startsWith(ds) || e.actionDate === ds)
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
   }
 
   const getProductiveHour = (): { hour: number; totalMinutes: number } | null => {
@@ -133,9 +135,47 @@ export default function CalendarView() {
         })}
         {days.map((day) => {
           const dayEntries = getEntriesForDay(day)
-          const isT = fmt(day) === fmt(today)
+          const ds = fmt(day)
+          const olderEntries = dayEntries.filter((e) => !e.timestamp.startsWith(ds))
+          const todayEntries = dayEntries.filter((e) => e.timestamp.startsWith(ds))
+          const isT = ds === fmt(today)
+
+          const renderEntry = (e: typeof dayEntries[number]) => {
+            const amt = fmtAmt(e.amount, e.amountType, state.currency)
+            const overdue = isOverdue(e)
+            return (
+              <div
+                key={e.id}
+                onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
+                style={{
+                  background: '#fff', borderRadius: 6, padding: '5px 7px', marginBottom: 5,
+                  border: `1px solid ${overdue ? 'var(--color-red)' : 'var(--color-border)'}`,
+                  cursor: 'pointer', fontSize: 11, lineHeight: 1.4,
+                }}
+                onMouseEnter={(ev) => (ev.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
+                onMouseLeave={(ev) => (ev.currentTarget.style.boxShadow = 'none')}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4, alignItems: 'center' }}>
+                  <span style={{
+                    color: e.isTaskDone ? 'var(--color-text3)' : 'var(--color-text)',
+                    textDecoration: e.isTaskDone ? 'line-through' : 'none',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+                  }}>
+                    {e.text.slice(0, 40)}{e.text.length > 40 ? '…' : ''}
+                  </span>
+                  <span style={{ fontSize: 10, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>{fmtTime(e.timestamp)}</span>
+                  {e.isTaskDone && <Icon name="checkSquare" size={10} color="var(--color-accent)" />}
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {amt && <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: amt.color, fontWeight: 500 }}>{amt.label}</span>}
+                  {e.actionDate && <span style={{ fontSize: 10, color: overdue ? 'var(--color-red)' : 'var(--color-amber)', fontWeight: 500 }}>{fmtDate(e.actionDate)}</span>}
+                </div>
+              </div>
+            )
+          }
+
           return (
-            <div key={'b' + fmt(day)} style={{
+            <div key={'b' + ds} style={{
               minHeight: 80,
               background: isT ? 'var(--color-accent-light)' : 'var(--color-bg2)',
               borderRadius: 'var(--radius)',
@@ -143,39 +183,22 @@ export default function CalendarView() {
               border: `1px solid ${isT ? 'var(--color-accent)' : 'var(--color-border)'}`,
             }}>
               {dayEntries.length === 0 && <div style={{ height: 40 }} />}
-              {dayEntries.map((e) => {
-                const amt = fmtAmt(e.amount, e.amountType, state.currency)
-                const overdue = isOverdue(e)
-                return (
-                  <div
-                    key={e.id}
-                    onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
-                    style={{
-                      background: '#fff', borderRadius: 6, padding: '5px 7px', marginBottom: 5,
-                      border: `1px solid ${overdue ? 'var(--color-red)' : 'var(--color-border)'}`,
-                      cursor: 'pointer', fontSize: 11, lineHeight: 1.4,
-                    }}
-                    onMouseEnter={(ev) => (ev.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
-                    onMouseLeave={(ev) => (ev.currentTarget.style.boxShadow = 'none')}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4, alignItems: 'center' }}>
-                      <span style={{
-                        color: e.isTaskDone ? 'var(--color-text3)' : 'var(--color-text)',
-                        textDecoration: e.isTaskDone ? 'line-through' : 'none',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
-                      }}>
-                        {e.text.slice(0, 40)}{e.text.length > 40 ? '…' : ''}
-                      </span>
-                      <span style={{ fontSize: 10, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>{fmtTime(e.timestamp)}</span>
-                      {e.isTaskDone && <Icon name="checkSquare" size={10} color="var(--color-accent)" />}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {amt && <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: amt.color, fontWeight: 500 }}>{amt.label}</span>}
-                      {e.actionDate && <span style={{ fontSize: 10, color: overdue ? 'var(--color-red)' : 'var(--color-amber)', fontWeight: 500 }}>{fmtDate(e.actionDate)}</span>}
-                    </div>
-                  </div>
-                )
-              })}
+              {olderEntries.length > 0 && (
+                <div style={{ marginBottom: 6 }}>
+                  {olderEntries.map(renderEntry)}
+                </div>
+              )}
+              {olderEntries.length > 0 && todayEntries.length > 0 && (
+                <div style={{ height: 1, background: 'var(--color-border)', margin: '16px 0 8px', position: 'relative' }}>
+                  <span style={{
+                    position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+                    background: 'var(--color-bg2)', padding: '0 6px',
+                    fontSize: 9, fontWeight: 600, color: 'var(--color-text3)', textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                  }}>Recent</span>
+                </div>
+              )}
+              {todayEntries.length > 0 && todayEntries.map(renderEntry)}
             </div>
           )
         })}

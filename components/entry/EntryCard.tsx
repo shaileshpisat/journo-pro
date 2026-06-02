@@ -230,6 +230,11 @@ export default function EntryCard({
           </div>
         </div>
       </div>
+      {!minimal && entry.folder && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6, alignItems: 'center' }}>
+          <FolderChip path={entry.folder} small />
+        </div>
+      )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6, alignItems: 'center' }}>
         {minimal ? (
           <>
@@ -264,8 +269,6 @@ export default function EntryCard({
             >
               {fmtTime(entry.timestamp)}
             </span>
-            {entry.mentions?.map((m) => <Chip key={m} icon="entity" label={`@${m}`} small />)}
-            {entry.folder && <FolderChip path={entry.folder} small />}
             {entry.actionDate && (
               <Chip
                 icon="clock"
@@ -275,6 +278,7 @@ export default function EntryCard({
                 small
               />
             )}
+            {entry.mentions?.map((m) => <Chip key={m} icon="entity" label={`@${m}`} small />)}
             {entry.isTaskDone && entry.completedAt && (
               <Chip
                 icon="check"
