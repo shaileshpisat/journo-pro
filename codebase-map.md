@@ -629,6 +629,8 @@ State: `weekOffset` (0 = current week)
 
 Week = Monday to Sunday. 24-hour rows in a 7-column grid. For each entry with `timeLogs` within the week, renders a color-coded block spanning the tracked hours/minutes. Block color is deterministic per entry (hash of entry.id). Clicking a block dispatches `SELECT_ENTRY` to open the entry detail overlay.
 
+Overlapping blocks within the same day are laid out side-by-side using a greedy column-assignment algorithm (`assignColumns`): blocks sorted by start time are placed in the first free column, creating equally-sized columns per overlapping group. The `blockPositions` memoized map stores `{ col, totalCols }` per block key (`entryId-startedAt`) for use during rendering.
+
 Week navigation: left/right chevron buttons and "Today" button (resets to offset 0).
 
 #### `SettingsView.tsx`

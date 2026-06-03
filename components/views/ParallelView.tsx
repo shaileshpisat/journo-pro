@@ -36,6 +36,31 @@ interface HourBlock {
   durationMinutes: number
 }
 
+function assignColumns(
+  dayBlocks: HourBlock[]
+): Map<string, { col: number; totalCols: number }> {
+  const sorted = [...dayBlocks].sort(
+    (a, b) => (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
+  )
+  const colEnds: number[] = []
+  const result = new Map<string, { col: number; totalCols: number }>()
+  sorted.forEach((block) => {
+    const blockStart = block.startHour * 60 + block.startMinute
+    const blockEnd = block.endHour * 60
+    const key = `${block.entry.id}-${block.log.startedAt}`
+    let col = colEnds.findIndex((end) => end <= blockStart)
+    if (col === -1) {
+      col = colEnds.length
+      colEnds.push(0)
+    }
+    colEnds[col] = Math.max(colEnds[col], blockEnd)
+    result.set(key, { col, totalCols: 0 })
+  })
+  const totalCols = Math.max(colEnds.length, 1)
+  result.forEach((v) => { v.totalCols = totalCols })
+  return result
+}
+
 export default function ParallelView() {
   const { state, dispatch } = useAppState()
   const { entries } = state
@@ -74,6 +99,21 @@ export default function ParallelView() {
     })
     return result
   }, [entries, dayStrs])
+
+  const blockPositions = useMemo(() => {
+    const byDay = new Map<string, HourBlock[]>()
+    blocks.forEach((b) => {
+      const dayKey = fmt(new Date(b.log.startedAt))
+      if (!byDay.has(dayKey)) byDay.set(dayKey, [])
+      byDay.get(dayKey)!.push(b)
+    })
+    const result = new Map<string, { col: number; totalCols: number }>()
+    byDay.forEach((dayBlocks) => {
+      const positions = assignColumns(dayBlocks)
+      positions.forEach((pos, key) => result.set(key, pos))
+    })
+    return result
+  }, [blocks])
 
   const fmtHour = (h: number) => {
     const period = h >= 12 ? 'PM' : 'AM'
@@ -174,13 +214,16 @@ export default function ParallelView() {
                   const hPct = b.startHour === hour
                     ? Math.max(12.5, b.durationMinutes / 60 * 100 - topPct)
                     : 12.5
+                  const pos = blockPositions.get(`${b.entry.id}-${b.log.startedAt}`) ?? { col: 0, totalCols: 1 }
                   return (
                     <div
                       key={b.entry.id + '-' + b.log.startedAt}
                       onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: b.entry })}
                       title={b.entry.text}
                       style={{
-                        position: 'absolute', top: `${topPct}%`, left: 1, right: 1,
+                        position: 'absolute', top: `${topPct}%`,
+                        left: `${(pos.col / pos.totalCols) * 100 + 0.5}%`,
+                        width: `${(1 / pos.totalCols) * 100 - 1}%`,
                         height: `${hPct}%`, background: getColor(b.entry), borderRadius: 3,
                         opacity: 0.7, cursor: 'pointer', zIndex: 10,
                         display: 'flex', alignItems: 'center', overflow: 'hidden',
