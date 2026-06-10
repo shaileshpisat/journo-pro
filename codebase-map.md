@@ -1,7 +1,7 @@
 # JournoPro — Codebase Map
 
 > Reference document for feature development and bug fixes.
-> Last updated: 2026-06-10 (added 12-hour auto-reload via `jp_lastReload`)
+> Last updated: 2026-06-10 (added 12-hour auto-reload + recurring task date advancement + `RecurringTagPicker` modal)
 
 ---
 
@@ -265,6 +265,8 @@ type ViewName =
   projects: Project[]       // All projects
   goals: Goal[]             // All goals
   habits: Habit[]           // All habits
+  reloadPending: boolean    // True when 12-hour auto-reload is queued
+  pendingRecurring: PendingRecurringEntry[]  // Recurring tasks with multiple period tags awaiting user pick
 }
 ```
 
@@ -297,12 +299,17 @@ type ViewName =
 | `SET_GOALS` / `ADD_GOAL` / `UPDATE_GOAL` / `DELETE_GOAL` | various | CRUD for goals; DELETE also unmaps all entries from that goal |
 | `SET_HABITS` / `ADD_HABIT` / `UPDATE_HABIT` / `DELETE_HABIT` | various | CRUD for habits; DELETE also unmaps all entries from that habit |
 | `ADD_HABIT_TRACKER_ENTRY` | `{ habitId, entry: HabitTrackerEntry }` | Append a new daily tracker entry to a habit |
+| `SET_RELOAD_PENDING` | `boolean` | Set/clear reload-pending flag for 12-hour auto-reload |
+| `SET_PENDING_RECURRING` | `PendingRecurringEntry[]` | Store recurring tasks with multiple period tags awaiting user resolution |
+| `RESOLVE_RECURRING` | `{ entryId, selectedTag }` | Remove other period tags, advance actionDate by selectedTag's period, clear from pending |
 
 ### localStorage sync
 
 - On **mount**: reads `jp_entries`, `jp_view`, `jp_activeTimers`, `jp_currency`, and `jp_searchFilters` once via `useEffect` + `useRef` guard.
 - On **state change**: `useEffect` watching `state.entries` → saves to `jp_entries`; same for `state.view`, `state.activeTimers`, `state.currency`, and `state.searchFilters`.
 - **Seed data**: If localStorage is empty, `SEED_ENTRIES` is used as initial state.
+- **Auto-reload**: `jp_lastReload` is checked on every mount. If 12+ hours have elapsed, `reloadPending` is set instead of immediately reloading — the app waits for recurring-task resolution first.
+- **Recurring task check**: Runs once after hydration. Entries with `isTask && !isTaskDone && tags.includes('recurring') && past actionDate` are processed. If multiple period tags exist (`daily`/`weekdays`/`weekend`/`weekly`/`monthly`/`quarterly`), they're shown in `RecurringTagPicker`. Single/no-tag entries are auto-advanced (actionDate + period until >= today, or set to today).
 
 ### Consuming state in components
 
@@ -623,6 +630,11 @@ Navigation: click folder name → `dispatch(SET_VIEW, 'folder:' + node.path)`
 
 ### components/modals/
 
+#### `RecurringTagPicker.tsx`
+No props. Reads `state.pendingRecurring`.
+
+Renders a modal when entries with multiple period tags (`#daily`, `#weekdays`, `#weekend`, `#weekly`, `#monthly`, `#quarterly`) are detected among recurring tasks with past action dates. Each entry shows a `<select>` to pick one tag. Confirm dispatches `RESOLVE_RECURRING` for each, which removes the other period tags and advances the action date by the selected period.
+
 #### `AddFolderModal.tsx`
 No props. Reads `state.addFolderEntry`.
 
@@ -863,7 +875,7 @@ style={{ color: 'var(--color-accent)', background: 'var(--color-accent-light)' }
 
 | Key | Type | Contents |
 |---|---|---|
-| `jp_lastReload` | `string` (numeric) | `Date.now()` timestamp of last reload; checked on mount, triggers `window.location.reload()` if 12+ hours have elapsed |
+| `jp_lastReload` | `string` (numeric) | `Date.now()` timestamp of last reload; checked on mount, sets `reloadPending` if 12+ hours have elapsed; actual reload waits for recurring-task resolution |
 | `jp_entries` | `Entry[]` JSON | All journal entries |
 | `jp_view` | `string` | Last active view name |
 | `jp_activeTimers` | `TimerState[]` JSON | Active parallel timers (persists across refresh) |

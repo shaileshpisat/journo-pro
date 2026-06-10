@@ -18,13 +18,14 @@ import EntryDetail from '@/components/entry/EntryDetail'
 import FloatingTimer from '@/components/FloatingTimer'
 import ScrollToTop from '@/components/ScrollToTop'
 import AddFolderModal from '@/components/modals/AddFolderModal'
+import RecurringTagPicker from '@/components/modals/RecurringTagPicker'
 import Toast from '@/components/ui/Toast'
 import ParallelView from '@/components/views/ParallelView'
 import PGHView from '@/components/views/PGHView'
 
 export default function App() {
   const { state } = useAppState()
-  const { view, selectedEntry, activeTimers, addFolderEntry } = state
+  const { view, selectedEntry, activeTimers, addFolderEntry, pendingRecurring } = state
   const mainRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -67,6 +68,7 @@ export default function App() {
       <Toast />
       <ScrollToTop />
       {addFolderEntry && <AddFolderModal />}
+      {pendingRecurring.length > 0 && <RecurringTagPicker />}
     </div>
   )
 }

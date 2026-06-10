@@ -160,6 +160,15 @@ export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
   tasksOnly: false,
 }
 
+export interface PendingRecurringEntry {
+  entryId: number
+  text: string
+  actionDate: string
+  periodTags: string[]
+}
+
+export const PERIOD_TAGS = ['daily', 'weekdays', 'weekend', 'weekly', 'monthly', 'quarterly'] as const
+
 export interface AppState {
   entries: Entry[]
   view: ViewName
@@ -173,6 +182,8 @@ export interface AppState {
   projects: Project[]
   goals: Goal[]
   habits: Habit[]
+  reloadPending: boolean
+  pendingRecurring: PendingRecurringEntry[]
 }
 
 export type Action =
@@ -213,3 +224,6 @@ export type Action =
   | { type: 'UPDATE_HABIT'; payload: Habit }
   | { type: 'DELETE_HABIT'; payload: number }
   | { type: 'ADD_HABIT_TRACKER_ENTRY'; payload: { habitId: number; entry: HabitTrackerEntry } }
+  | { type: 'SET_RELOAD_PENDING'; payload: boolean }
+  | { type: 'SET_PENDING_RECURRING'; payload: PendingRecurringEntry[] }
+  | { type: 'RESOLVE_RECURRING'; payload: { entryId: number; selectedTag: string } }

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react'
-import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState, CurrencySymbol, DEFAULT_SEARCH_FILTERS, SearchFilters, Project, Goal, Habit } from '@/lib/types'
+import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState, CurrencySymbol, DEFAULT_SEARCH_FILTERS, SearchFilters, Project, Goal, Habit, PendingRecurringEntry, PERIOD_TAGS } from '@/lib/types'
 import { SEED_ENTRIES } from '@/lib/seedData'
 import { todayLocalStr, toLocalDateStr } from '@/lib/predicates'
 
@@ -18,6 +18,8 @@ const initialState: AppState = {
   projects: [],
   goals: [],
   habits: [],
+  reloadPending: false,
+  pendingRecurring: [],
 }
 
 function reducer(state: AppState, action: Action): AppState {
@@ -246,9 +248,80 @@ function reducer(state: AppState, action: Action): AppState {
             : h
         ),
       }
+    case 'SET_RELOAD_PENDING':
+      return { ...state, reloadPending: action.payload }
+    case 'SET_PENDING_RECURRING':
+      return { ...state, pendingRecurring: action.payload }
+    case 'RESOLVE_RECURRING': {
+      const { entryId, selectedTag } = action.payload
+      const now = Date.now()
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+      return {
+        ...state,
+        entries: state.entries.map((e) => {
+          if (e.id !== entryId) return e
+          const otherTags = e.tags.filter((t): t is string =>
+            (PERIOD_TAGS as readonly string[]).includes(t) && t !== selectedTag
+          )
+          const newTags = e.tags.filter((t) => !otherTags.includes(t))
+          const newDate = advanceDate(e.actionDate!, selectedTag, todayStr)
+          return {
+            ...e,
+            tags: newTags,
+            actionDate: newDate,
+            history: [...(e.history || []), { timestamp: now, field: 'actionDate', oldValue: e.actionDate, newValue: newDate }],
+          }
+        }),
+        selectedEntry:
+          state.selectedEntry?.id === entryId
+            ? { ...state.selectedEntry, ...(() => {
+                const otherTags = (state.selectedEntry!.tags || []).filter((t): t is string =>
+                  (PERIOD_TAGS as readonly string[]).includes(t) && t !== selectedTag
+                )
+                return {
+                  tags: state.selectedEntry!.tags.filter((t) => !otherTags.includes(t)),
+                  actionDate: advanceDate(state.selectedEntry!.actionDate!, selectedTag, todayStr),
+                }
+              })() }
+            : state.selectedEntry,
+        pendingRecurring: state.pendingRecurring.filter((p) => p.entryId !== entryId),
+      }
+    }
     default:
       return state
   }
+}
+
+function advanceDate(actionDate: string, tag: string, todayStr: string): string {
+  const date = new Date(actionDate + 'T00:00:00')
+  const today = new Date(todayStr + 'T00:00:00')
+
+  if (!tag) return todayStr
+
+  const step = (d: Date) => {
+    switch (tag) {
+      case 'weekly': d.setDate(d.getDate() + 7); break
+      case 'monthly': d.setMonth(d.getMonth() + 1); break
+      case 'quarterly': d.setMonth(d.getMonth() + 3); break
+      default: d.setDate(d.getDate() + 1); break
+    }
+  }
+
+  while (date < today) step(date)
+
+  if (tag === 'weekdays') {
+    while (date.getDay() === 0 || date.getDay() === 6)
+      date.setDate(date.getDate() + 1)
+  }
+
+  if (tag === 'weekend') {
+    while (date.getDay() !== 0 && date.getDay() !== 6)
+      date.setDate(date.getDate() + 1)
+  }
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 interface AppContextType {
@@ -277,8 +350,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (lastReload) {
         if (now - Number(lastReload) >= RELOAD_INTERVAL) {
           window.localStorage.setItem('jp_lastReload', String(now))
-          window.location.reload()
-          return
+          dispatch({ type: 'SET_RELOAD_PENDING', payload: true })
         }
       } else {
         window.localStorage.setItem('jp_lastReload', String(now))
@@ -347,6 +419,67 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {}
   }, [])
+
+  const recurringChecked = useRef(false)
+
+  // Check recurring tasks on every mount (after hydration)
+  useEffect(() => {
+    if (!hydrated.current || recurringChecked.current) return
+    recurringChecked.current = true
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+    const multiTag: PendingRecurringEntry[] = []
+    const singleTag: Entry[] = []
+
+    for (const entry of state.entries) {
+      if (!entry.isTask || entry.isTaskDone) continue
+      if (!entry.tags.includes('recurring')) continue
+      if (!entry.actionDate || entry.actionDate >= todayStr) continue
+
+      const periodTags = entry.tags.filter((t) =>
+        (PERIOD_TAGS as readonly string[]).includes(t as typeof PERIOD_TAGS[number])
+      )
+
+      if (periodTags.length > 1) {
+        multiTag.push({ entryId: entry.id, text: entry.text, actionDate: entry.actionDate, periodTags })
+      } else {
+        singleTag.push(entry)
+      }
+    }
+
+    if (multiTag.length > 0) {
+      dispatch({ type: 'SET_PENDING_RECURRING', payload: multiTag })
+    }
+
+    for (const entry of singleTag) {
+      const periodTag = entry.tags.find((t) =>
+        (PERIOD_TAGS as readonly string[]).includes(t as typeof PERIOD_TAGS[number])
+      ) || ''
+      const newDate = advanceDate(entry.actionDate!, periodTag as string, todayStr)
+      if (newDate !== entry.actionDate) {
+        const now = Date.now()
+        dispatch({
+          type: 'UPDATE_ENTRY',
+          payload: { ...entry, actionDate: newDate, history: [...(entry.history || []), { timestamp: now, field: 'actionDate', oldValue: entry.actionDate, newValue: newDate }] },
+        })
+      }
+    }
+  }, [state.entries, dispatch])
+
+  const reloadTriggered = useRef(false)
+
+  // Trigger reload when recurring tasks are resolved and reload is pending
+  useEffect(() => {
+    if (!hydrated.current || !state.reloadPending) return
+    if (state.pendingRecurring.length > 0) return
+    if (reloadTriggered.current) return
+    reloadTriggered.current = true
+    window.localStorage.setItem('jp_entries', JSON.stringify(state.entries))
+    window.location.reload()
+  }, [state.reloadPending, state.pendingRecurring, state.entries])
 
   // Persist entries
   useEffect(() => {
