@@ -19,6 +19,7 @@ export interface Comment {
   id: number
   text: string
   timestamp: string
+  isPinned?: boolean
 }
 
 export type ProjectStatus = 'idea' | 'plan' | 'active' | 'on-hold' | 'done' | 'archived'
@@ -195,6 +196,7 @@ export type Action =
   | { type: 'RESTORE_ENTRY'; payload: number }
   | { type: 'ADD_COMMENT'; payload: { entryId: number; comment: Comment } }
   | { type: 'EDIT_COMMENT'; payload: { entryId: number; commentId: number; text: string } }
+  | { type: 'PIN_COMMENT'; payload: { entryId: number; commentId: number } }
   | { type: 'SET_CURRENCY'; payload: CurrencySymbol }
   | { type: 'SET_SEARCH_FILTERS'; payload: SearchFilters }
   | { type: 'SET_TOAST'; payload: string | null }

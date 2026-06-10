@@ -192,6 +192,21 @@ function reducer(state: AppState, action: Action): AppState {
             : state.selectedEntry,
       }
     }
+    case 'PIN_COMMENT': {
+      const { entryId, commentId } = action.payload
+      const togglePin = (c: Comment) =>
+        c.id === commentId ? { ...c, isPinned: !c.isPinned } : { ...c, isPinned: false }
+      return {
+        ...state,
+        entries: state.entries.map((e) =>
+          e.id === entryId ? { ...e, comments: (e.comments || []).map(togglePin) } : e
+        ),
+        selectedEntry:
+          state.selectedEntry?.id === entryId
+            ? { ...state.selectedEntry, comments: (state.selectedEntry.comments || []).map(togglePin) }
+            : state.selectedEntry,
+      }
+    }
     case 'SET_CURRENCY':
       return { ...state, currency: action.payload }
     case 'SET_SEARCH_FILTERS':
@@ -247,10 +262,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState)
   const hydrated = useRef(false)
 
+  // Auto-reload after 12 hours
+  const RELOAD_INTERVAL = 12 * 60 * 60 * 1000
+
   // Hydrate from localStorage on mount
   useEffect(() => {
     if (hydrated.current) return
     hydrated.current = true
+
+    // Check if 12 hours have passed since last reload
+    try {
+      const lastReload = window.localStorage.getItem('jp_lastReload')
+      const now = Date.now()
+      if (lastReload) {
+        if (now - Number(lastReload) >= RELOAD_INTERVAL) {
+          window.localStorage.setItem('jp_lastReload', String(now))
+          window.location.reload()
+          return
+        }
+      } else {
+        window.localStorage.setItem('jp_lastReload', String(now))
+      }
+    } catch {}
     try {
       const stored = window.localStorage.getItem('jp_entries')
       if (stored) {

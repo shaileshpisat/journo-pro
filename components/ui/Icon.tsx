@@ -147,6 +147,12 @@ const PATHS: Record<string, React.ReactNode> = {
       <rect x="11" y="2" width="3" height="12" rx="0.8" fill="currentColor" />
     </>
   ),
+  pin: (
+    <>
+      <path d="M8 2L12 6L8 10L4 6Z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
+      <circle cx="8" cy="2" r="1" fill="currentColor" />
+    </>
+  ),
   square: (
     <rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
   ),

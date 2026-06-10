@@ -412,6 +412,15 @@ function PGHMapper({ entry }: { entry: Entry }) {
   )
 }
 
+function pghMappingLabel(mapping: unknown, projects: any[], goals: any[], habits: any[]): string {
+  if (!mapping || typeof mapping !== 'object') return '—'
+  const m = mapping as PGHMapping
+  if (m.type === 'project') return projects.find((p) => p.id === m.id)?.title ?? 'Unknown project'
+  if (m.type === 'goal') return goals.find((g) => g.id === m.id)?.title ?? 'Unknown goal'
+  if (m.type === 'habit') return habits.find((h) => h.id === m.id)?.title ?? 'Unknown habit'
+  return '—'
+}
+
 export default function EntryDetail() {
   const { state, dispatch } = useAppState()
   const entry = state.selectedEntry
@@ -488,6 +497,10 @@ export default function EntryDetail() {
       },
     })
     setCommentInput('')
+  }
+
+  const handlePinComment = (commentId: number) => {
+    dispatch({ type: 'PIN_COMMENT', payload: { entryId: entry.id, commentId } })
   }
 
   const saveActionDateInline = (newDate: string) => {
@@ -800,13 +813,46 @@ export default function EntryDetail() {
             )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <textarea
+                value={commentInput}
+                onChange={(e) => setCommentInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && commentInput.trim()) { e.preventDefault(); handleAddComment() } }}
+                placeholder="Add a comment..."
+                style={{ ...fieldInputStyle, flex: 1, resize: 'none' }}
+                rows={2}
+              />
+              <button
+                onClick={handleAddComment}
+                disabled={!commentInput.trim()}
+                style={{
+                  background: commentInput.trim() ? 'var(--color-accent)' : 'var(--color-bg3)',
+                  color: commentInput.trim() ? '#fff' : 'var(--color-text3)',
+                  border: 'none', borderRadius: 6, padding: '4px 12px',
+                  fontFamily: 'inherit', fontSize: 12,
+                  cursor: commentInput.trim() ? 'pointer' : 'default',
+                }}
+              >
+                Add
+              </button>
+            </div>
+
             {entry.comments && entry.comments.length > 0 ? (
-              [...entry.comments].reverse().map((c) => {
+              [...entry.comments].sort((a, b) => {
+                if (a.isPinned && !b.isPinned) return -1
+                if (!a.isPinned && b.isPinned) return 1
+                return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+              }).map((c) => {
                 const canEdit = Date.now() - new Date(c.timestamp).getTime() < 4 * 60 * 60 * 1000
                 const isEditing = editingCommentId === c.id
                 return (
-                  <div key={c.id} style={{ padding: '8px 10px', background: 'var(--color-bg2)', borderRadius: 8 }}>
+                  <div key={c.id} style={{
+                    padding: '8px 10px',
+                    background: c.isPinned ? 'var(--color-accent-light)' : 'var(--color-bg2)',
+                    borderRadius: 8,
+                    borderLeft: c.isPinned ? '3px solid var(--color-accent)' : '3px solid transparent',
+                  }}>
                     {isEditing ? (
                       <div>
                         <textarea
@@ -842,17 +888,36 @@ export default function EntryDetail() {
                           {c.text}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 10, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace" }}>
-                            {new Date(c.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                          </span>
-                          {canEdit && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {c.isPinned && (
+                              <span style={{ fontSize: 9, color: 'var(--color-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                Pinned
+                              </span>
+                            )}
+                            <span style={{ fontSize: 10, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace" }}>
+                              {new Date(c.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                             <button
-                              onClick={() => { setEditingCommentId(c.id); setEditingCommentText(c.text) }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--color-text3)', display: 'flex' }}
+                              onClick={() => handlePinComment(c.id)}
+                              style={{
+                                background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px',
+                                color: c.isPinned ? 'var(--color-accent)' : 'var(--color-text3)', display: 'flex',
+                              }}
+                              title={c.isPinned ? 'Unpin comment' : 'Pin comment'}
                             >
-                              <Icon name="edit" size={10} />
+                              <Icon name="pin" size={10} />
                             </button>
-                          )}
+                            {canEdit && (
+                              <button
+                                onClick={() => { setEditingCommentId(c.id); setEditingCommentText(c.text) }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--color-text3)', display: 'flex' }}
+                              >
+                                <Icon name="edit" size={10} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </>
                     )}
@@ -865,30 +930,6 @@ export default function EntryDetail() {
               </div>
             )}
           </div>
-
-          <div style={{ display: 'flex', gap: 6 }}>
-            <textarea
-              value={commentInput}
-              onChange={(e) => setCommentInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && commentInput.trim()) { e.preventDefault(); handleAddComment() } }}
-              placeholder="Add a comment..."
-              style={{ ...fieldInputStyle, flex: 1, resize: 'none' }}
-              rows={2}
-            />
-            <button
-              onClick={handleAddComment}
-              disabled={!commentInput.trim()}
-              style={{
-                background: commentInput.trim() ? 'var(--color-accent)' : 'var(--color-bg3)',
-                color: commentInput.trim() ? '#fff' : 'var(--color-text3)',
-                border: 'none', borderRadius: 6, padding: '4px 12px',
-                fontFamily: 'inherit', fontSize: 12,
-                cursor: commentInput.trim() ? 'pointer' : 'default',
-              }}
-            >
-              Add
-            </button>
-          </div>
         </div>
 
         {entry.history && entry.history.length > 0 && (
@@ -899,9 +940,9 @@ export default function EntryDetail() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {[...entry.history].reverse().map((h, i) => {
-                const fmtOld = h.field === 'amount' ? fmtAmt(Number(h.oldValue), entry.amountType, state.currency)?.label : String(h.oldValue ?? '—')
-                const fmtNew = h.field === 'amount' ? fmtAmt(Number(h.newValue), entry.amountType, state.currency)?.label : String(h.newValue ?? '—')
-                const fieldLabel = h.field === 'actionDate' ? 'Action date' : h.field === 'amountType' ? 'Amount type' : h.field === 'commentAdded' ? 'Comment added' : h.field === 'commentEdited' ? 'Comment edited' : h.field.charAt(0).toUpperCase() + h.field.slice(1)
+                const fmtOld = h.field === 'amount' ? fmtAmt(Number(h.oldValue), entry.amountType, state.currency)?.label : h.field === 'pghMapping' ? pghMappingLabel(h.oldValue, state.projects, state.goals, state.habits) : String(h.oldValue ?? '—')
+                const fmtNew = h.field === 'amount' ? fmtAmt(Number(h.newValue), entry.amountType, state.currency)?.label : h.field === 'pghMapping' ? pghMappingLabel(h.newValue, state.projects, state.goals, state.habits) : String(h.newValue ?? '—')
+                const fieldLabel = h.field === 'actionDate' ? 'Action date' : h.field === 'amountType' ? 'Amount type' : h.field === 'commentAdded' ? 'Comment added' : h.field === 'commentEdited' ? 'Comment edited' : h.field === 'pghMapping' ? 'Project-Goal-Habit mapping' : h.field.charAt(0).toUpperCase() + h.field.slice(1)
                 return (
                   <div key={i} style={{ padding: '5px 8px', background: 'var(--color-bg2)', borderRadius: 6 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>

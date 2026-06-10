@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { id: 'inbox', label: 'Inbox', icon: 'inbox' },
   { id: 'search', label: 'Search', icon: 'search' },
   { id: 'tasks', label: 'Tasks', icon: 'check' },
-  { id: 'pgh', label: 'PGH', icon: 'barChart' },
+  { id: 'pgh', label: 'Project-Goal-Habit', icon: 'barChart' },
   { id: 'parallel', label: 'Parallel', icon: 'stopwatch' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar' },
   { id: 'entities', label: 'Mentions', icon: 'entity' },

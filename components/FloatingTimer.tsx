@@ -114,6 +114,7 @@ export default function FloatingTimer() {
         const entry = state.entries.find((e) => e.id === t.entryId)
         const totalElapsed = getTimerElapsed(t)
         const storedDescs = descMapRef.current[t.entryId]
+        const isPaused = t.segments.length > 0 && t.segments[t.segments.length - 1].pausedAt !== undefined
 
         return (
           <div
@@ -133,10 +134,10 @@ export default function FloatingTimer() {
             {/* Header: entry text + ticking timer */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
               <span
-                className="animate-pulse-dot"
+                className={isPaused ? '' : 'animate-pulse-dot'}
                 style={{
                   width: 8, height: 8, borderRadius: 99,
-                  background: 'var(--color-red)', flexShrink: 0,
+                  background: isPaused ? 'var(--color-blue)' : 'var(--color-red)', flexShrink: 0,
                   marginTop: 4,
                 }}
               />

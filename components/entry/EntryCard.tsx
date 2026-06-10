@@ -16,6 +16,7 @@ interface EntryCardProps {
   timerActive?: boolean
   onTimerToggle?: (entry: Entry) => void
   onTaskToggle?: (entry: Entry) => void
+  onSetActionDate?: (entry: Entry) => void
   onArchive?: (entry: Entry) => void
   currency?: string
 }
@@ -42,6 +43,7 @@ export default function EntryCard({
   timerActive,
   onTimerToggle,
   onTaskToggle,
+  onSetActionDate,
   onArchive,
   currency = '$',
 }: EntryCardProps) {
@@ -247,6 +249,15 @@ export default function EntryCard({
                 small
               />
             )}
+            {onSetActionDate && entry.actionDate && entry.actionDate !== todayLocalStr() && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onSetActionDate(entry) }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, color: 'var(--color-accent)', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                title="Set date to today"
+              >
+                → Today
+              </button>
+            )}
             {entry.mentions?.map((m) => <Chip key={m} icon="entity" label={`@${m}`} small />)}
             {entry.isTaskDone && entry.completedAt && (
               <Chip
@@ -277,6 +288,15 @@ export default function EntryCard({
                 color={overdue ? 'var(--color-red)' : 'var(--color-amber)'}
                 small
               />
+            )}
+            {onSetActionDate && entry.actionDate && entry.actionDate !== todayLocalStr() && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onSetActionDate(entry) }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, color: 'var(--color-accent)', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                title="Set date to today"
+              >
+                → Today
+              </button>
             )}
             {entry.mentions?.map((m) => <Chip key={m} icon="entity" label={`@${m}`} small />)}
             {entry.isTaskDone && entry.completedAt && (

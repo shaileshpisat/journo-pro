@@ -1,7 +1,7 @@
 # JournoPro — Codebase Map
 
 > Reference document for feature development and bug fixes.
-> Last updated: 2026-06-10
+> Last updated: 2026-06-10 (added 12-hour auto-reload via `jp_lastReload`)
 
 ---
 
@@ -127,6 +127,7 @@ interface Comment {
   id: number
   text: string
   timestamp: string     // ISO 8601
+  isPinned?: boolean    // Single pinned comment shown at top
 }
 ```
 
@@ -287,6 +288,7 @@ type ViewName =
 | `MOVE_FOLDER` | `{ oldPath, newPath }` | Rename folder path on all matching entries |
 | `ADD_COMMENT` | `{ entryId: number, comment: Comment }` | Append comment to entry.comments; records `commentAdded` in history |
 | `EDIT_COMMENT` | `{ entryId: number, commentId: number, text: string }` | Update comment text by id; records `commentEdited` in history |
+| `PIN_COMMENT` | `{ entryId: number, commentId: number }` | Toggle `isPinned` on comment; unpins all others on the same entry (only one can be pinned) |
 | `SET_CURRENCY` | `CurrencySymbol` | Update currency symbol used for all amount displays |
 | `SET_SEARCH_FILTERS` | `SearchFilters` | Persist search view filters (query, entity/folder/tag selections, date range, tasksOnly) |
 | `SET_TOAST` | `string \| null` | Show/dismiss toast notification (auto-dismissed after 3s) |
@@ -377,7 +379,7 @@ dispatch({ type: 'SELECT_ENTRY', payload: null })
 - `oklch()` opacity modifiers (`bg-accent/50`) **do not work** — use `--accent-ring` variable for the one focus-ring case.
 - Dynamic indentation (FolderTreeNode) uses `style={{ paddingLeft: ... }}` — Tailwind cannot generate runtime class strings.
 - Most components use **inline styles** for color values. Tailwind classes are used primarily for layout (flex, grid, gap, overflow, position).
-- Custom animation: `.animate-pulse-dot` defined in globals.css (used by FloatingTimer's red dot).
+- Custom animation: `.animate-pulse-dot` defined in globals.css (used by FloatingTimer's red dot when running, stops pulsing and turns blue when paused).
 
 ### Layout constants (CSS variables, not Tailwind tokens)
 
@@ -504,7 +506,7 @@ SSR-safe generic hook. Reads from localStorage in `useEffect` (avoids hydration 
 ```tsx
 <Icon name="folder" size={16} color="var(--color-accent)" />
 ```
-Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare`, `barChart`, `square`, `checkSquare` (barChart added for PGH nav)
+Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare`, `barChart`, `pin`, `square`, `checkSquare`
 
 #### `Chip.tsx`
 ```tsx
@@ -555,6 +557,8 @@ Props: `entry`, `onClick`, `compact?`, `overdue?`, `minimal?`, `timerActive?`, `
 Hover state managed locally (`useState(hovered)`).
 Hover reveals a comment button (messageSquare icon with count) that opens EntryDetail.
 
+Accepts optional `onSetActionDate` prop. When provided and the entry has a non-today `actionDate`, renders a "→ Today" button next to the date chip that dispatches `UPDATE_ENTRY` with `actionDate` set to today's date.
+
 #### `JournalInput.tsx`
 No props — reads `dispatch` from context.
 - Calls `parseEntry()` on every keystroke
@@ -581,7 +585,7 @@ Save dispatches `UPDATE_ENTRY`. Back button dispatches `SELECT_ENTRY(null)`.
 
 PGH Mapping section: shows the linked Project/Goal/Habit with a dropdown to change or unmap; if unmapped, shows inline select dropdowns for each entity type. "Create one" link navigates to PGH view if no entities exist.
 
-Comments section at bottom: lists existing comments (newest first) with delete button on each, plus an inline textarea + Add button to post new comments (Ctrl+Enter to submit, Enter for newline). Edit uses textarea instead of input. Comment text preserves newlines via `white-space: pre-wrap`. Comments dispatch `ADD_COMMENT` / `DELETE_COMMENT`.
+Comments section at bottom: comment input form at the top of the section, followed by the comment list. Comments are sorted with the pinned comment first (if any), then newest-first. Each comment has a pin button (toggle, only one pinned at a time) and an edit button (within 4 hours). Ctrl+Enter to submit, Enter for newline. Edit uses textarea instead of input. Comment text preserves newlines via `white-space: pre-wrap`. Comments dispatch `ADD_COMMENT` / `EDIT_COMMENT` / `PIN_COMMENT`.
 
 ---
 
@@ -859,6 +863,7 @@ style={{ color: 'var(--color-accent)', background: 'var(--color-accent-light)' }
 
 | Key | Type | Contents |
 |---|---|---|
+| `jp_lastReload` | `string` (numeric) | `Date.now()` timestamp of last reload; checked on mount, triggers `window.location.reload()` if 12+ hours have elapsed |
 | `jp_entries` | `Entry[]` JSON | All journal entries |
 | `jp_view` | `string` | Last active view name |
 | `jp_activeTimers` | `TimerState[]` JSON | Active parallel timers (persists across refresh) |

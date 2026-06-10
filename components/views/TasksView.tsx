@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { Entry } from '@/lib/types'
 import { fmtDate } from '@/lib/formatters'
-import { toLocalDateStr } from '@/lib/predicates'
+import { toLocalDateStr, todayLocalStr } from '@/lib/predicates'
 import EntryCard from '@/components/entry/EntryCard'
 import SectionHead from '@/components/ui/SectionHead'
 import Icon from '@/components/ui/Icon'
@@ -89,6 +89,10 @@ export default function TasksView() {
     dispatch({ type: 'TOGGLE_TASK_DONE', payload: entry.id })
   }
 
+  const handleSetActionDate = (entry: Entry) => {
+    dispatch({ type: 'UPDATE_ENTRY', payload: { ...entry, actionDate: todayLocalStr() } })
+  }
+
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -149,6 +153,7 @@ export default function TasksView() {
                 timerActive={activeTimers.some((t) => t.entryId === e.id)}
                 onTimerToggle={handleTimerToggle}
                 onTaskToggle={handleTaskToggle}
+                onSetActionDate={handleSetActionDate}
                 currency={state.currency}
               />
             ))}
@@ -189,6 +194,7 @@ export default function TasksView() {
                     timerActive={activeTimers.some((t) => t.entryId === e.id)}
                     onTimerToggle={handleTimerToggle}
                     onTaskToggle={handleTaskToggle}
+                    onSetActionDate={handleSetActionDate}
                     currency={state.currency}
                   />
                 ))}
@@ -215,6 +221,7 @@ export default function TasksView() {
                     timerActive={activeTimers.some((t) => t.entryId === e.id)}
                     onTimerToggle={handleTimerToggle}
                     onTaskToggle={handleTaskToggle}
+                    onSetActionDate={handleSetActionDate}
                     currency={state.currency}
                   />
                 ))}
