@@ -1,12 +1,9 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react'
-import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState, CurrencySymbol, DEFAULT_SEARCH_FILTERS, SearchFilters } from '@/lib/types'
+import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState, CurrencySymbol, DEFAULT_SEARCH_FILTERS, SearchFilters, Project, Goal, Habit } from '@/lib/types'
 import { SEED_ENTRIES } from '@/lib/seedData'
-
-function todayStr() {
-  return new Date().toISOString().split('T')[0]
-}
+import { todayLocalStr, toLocalDateStr } from '@/lib/predicates'
 
 const initialState: AppState = {
   entries: SEED_ENTRIES,
@@ -18,6 +15,9 @@ const initialState: AppState = {
   currency: '$' as CurrencySymbol,
   searchFilters: { ...DEFAULT_SEARCH_FILTERS },
   toast: null,
+  projects: [],
+  goals: [],
+  habits: [],
 }
 
 function reducer(state: AppState, action: Action): AppState {
@@ -103,8 +103,8 @@ function reducer(state: AppState, action: Action): AppState {
       const entry = state.entries.find((e) => e.id === action.payload)
       if (!entry) return state
       if (entry.isTaskDone && entry.completedAt) {
-        const today = new Date().toISOString().split('T')[0]
-        if (entry.completedAt.split('T')[0] !== today) {
+        const today = todayLocalStr()
+        if (toLocalDateStr(entry.completedAt) !== today) {
           return { ...state, toast: 'Cannot undo — task was completed on a previous day' }
         }
       }
@@ -198,6 +198,39 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, searchFilters: action.payload }
     case 'SET_TOAST':
       return { ...state, toast: action.payload }
+    case 'SET_PROJECTS':
+      return { ...state, projects: action.payload }
+    case 'ADD_PROJECT':
+      return { ...state, projects: [...state.projects, action.payload] }
+    case 'UPDATE_PROJECT':
+      return { ...state, projects: state.projects.map((p) => (p.id === action.payload.id ? action.payload : p)) }
+    case 'DELETE_PROJECT':
+      return { ...state, projects: state.projects.filter((p) => p.id !== action.payload), entries: state.entries.map((e) => e.pghMapping?.type === 'project' && e.pghMapping.id === action.payload ? { ...e, pghMapping: null } : e) }
+    case 'SET_GOALS':
+      return { ...state, goals: action.payload }
+    case 'ADD_GOAL':
+      return { ...state, goals: [...state.goals, action.payload] }
+    case 'UPDATE_GOAL':
+      return { ...state, goals: state.goals.map((g) => (g.id === action.payload.id ? action.payload : g)) }
+    case 'DELETE_GOAL':
+      return { ...state, goals: state.goals.filter((g) => g.id !== action.payload), entries: state.entries.map((e) => e.pghMapping?.type === 'goal' && e.pghMapping.id === action.payload ? { ...e, pghMapping: null } : e) }
+    case 'SET_HABITS':
+      return { ...state, habits: action.payload }
+    case 'ADD_HABIT':
+      return { ...state, habits: [...state.habits, action.payload] }
+    case 'UPDATE_HABIT':
+      return { ...state, habits: state.habits.map((h) => (h.id === action.payload.id ? action.payload : h)) }
+    case 'DELETE_HABIT':
+      return { ...state, habits: state.habits.filter((h) => h.id !== action.payload), entries: state.entries.map((e) => e.pghMapping?.type === 'habit' && e.pghMapping.id === action.payload ? { ...e, pghMapping: null } : e) }
+    case 'ADD_HABIT_TRACKER_ENTRY':
+      return {
+        ...state,
+        habits: state.habits.map((h) =>
+          h.id === action.payload.habitId
+            ? { ...h, tracker: [...h.tracker, action.payload.entry] }
+            : h
+        ),
+      }
     default:
       return state
   }
@@ -259,6 +292,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'SET_SEARCH_FILTERS', payload: parsed })
       }
     } catch {}
+    try {
+      const storedProjects = window.localStorage.getItem('jp_projects')
+      if (storedProjects) {
+        const parsed: Project[] = JSON.parse(storedProjects)
+        dispatch({ type: 'SET_PROJECTS', payload: parsed })
+      }
+    } catch {}
+    try {
+      const storedGoals = window.localStorage.getItem('jp_goals')
+      if (storedGoals) {
+        const parsed: Goal[] = JSON.parse(storedGoals)
+        dispatch({ type: 'SET_GOALS', payload: parsed })
+      }
+    } catch {}
+    try {
+      const storedHabits = window.localStorage.getItem('jp_habits')
+      if (storedHabits) {
+        const parsed: Habit[] = JSON.parse(storedHabits)
+        dispatch({ type: 'SET_HABITS', payload: parsed })
+      }
+    } catch {}
   }, [])
 
   // Persist entries
@@ -294,6 +348,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated.current) return
     window.localStorage.setItem('jp_searchFilters', JSON.stringify(state.searchFilters))
   }, [state.searchFilters])
+
+  // Persist projects
+  useEffect(() => {
+    if (!hydrated.current) return
+    window.localStorage.setItem('jp_projects', JSON.stringify(state.projects))
+  }, [state.projects])
+
+  // Persist goals
+  useEffect(() => {
+    if (!hydrated.current) return
+    window.localStorage.setItem('jp_goals', JSON.stringify(state.goals))
+  }, [state.goals])
+
+  // Persist habits
+  useEffect(() => {
+    if (!hydrated.current) return
+    window.localStorage.setItem('jp_habits', JSON.stringify(state.habits))
+  }, [state.habits])
 
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>
 }

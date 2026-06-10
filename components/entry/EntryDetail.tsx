@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useAppState } from '@/context/AppContext'
-import { Entry, EntryHistory } from '@/lib/types'
+import { Entry, EntryHistory, PGHMapping } from '@/lib/types'
 import { fmtTime, fmtDate, fmtAmt, fmtElapsed, fmtDuration } from '@/lib/formatters'
-import { isOverdue } from '@/lib/predicates'
+import { isOverdue, todayLocalStr, toLocalDateStr } from '@/lib/predicates'
 import Icon from '@/components/ui/Icon'
 import Chip from '@/components/ui/Chip'
 import FieldBlock from '@/components/ui/FieldBlock'
@@ -276,6 +276,142 @@ function TagEditor({
   )
 }
 
+function PGHMapper({ entry }: { entry: Entry }) {
+  const { state, dispatch } = useAppState()
+  const { projects, goals, habits } = state
+
+  const mapping = entry.pghMapping
+  const mappedProject = mapping?.type === 'project' ? projects.find((p) => p.id === mapping.id) : null
+  const mappedGoal = mapping?.type === 'goal' ? goals.find((g) => g.id === mapping.id) : null
+  const mappedHabit = mapping?.type === 'habit' ? habits.find((h) => h.id === mapping.id) : null
+
+  const setMapping = (newMapping: PGHMapping | null) => {
+    const now = Date.now()
+    dispatch({
+      type: 'UPDATE_ENTRY',
+      payload: {
+        ...entry,
+        pghMapping: newMapping,
+        history: [...(entry.history || []), { timestamp: now, field: 'pghMapping', oldValue: entry.pghMapping, newValue: newMapping }],
+      },
+    })
+  }
+
+  return (
+    <div>
+      {mapping ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-bg2)', borderRadius: 8, padding: '8px 10px' }}>
+          <Icon name="barChart" size={14} color="var(--color-accent)" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text)', fontWeight: 500 }}>
+              {mappedProject?.title ?? mappedGoal?.title ?? mappedHabit?.title ?? 'Unknown'}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--color-text3)', textTransform: 'capitalize' }}>
+              {mapping.type}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <select
+              value={`${mapping.type}:${mapping.id}`}
+              onChange={(e) => {
+                const val = e.target.value
+                if (val === 'none') {
+                  setMapping(null)
+                } else {
+                  const [type, idStr] = val.split(':')
+                  setMapping({ type: type as PGHMapping['type'], id: Number(idStr) })
+                }
+              }}
+              style={{
+                border: '1px solid var(--color-border)', borderRadius: 6, padding: '3px 6px',
+                fontFamily: 'inherit', fontSize: 11, background: '#fff', color: 'var(--color-text)',
+                outline: 'none', cursor: 'pointer',
+              }}
+            >
+              <option value={`${mapping.type}:${mapping.id}`}>{mappedProject?.title ?? mappedGoal?.title ?? mappedHabit?.title ?? 'Unknown'}</option>
+              <option value="none">Unmap</option>
+              {projects.filter((p) => p.id !== mapping.id || mapping.type !== 'project').map((p) => (
+                <option key={`project:${p.id}`} value={`project:${p.id}`}>{p.title} (Project)</option>
+              ))}
+              {goals.filter((g) => g.id !== mapping.id || mapping.type !== 'goal').map((g) => (
+                <option key={`goal:${g.id}`} value={`goal:${g.id}`}>{g.title} (Goal)</option>
+              ))}
+              {habits.filter((h) => h.id !== mapping.id || mapping.type !== 'habit').map((h) => (
+                <option key={`habit:${h.id}`} value={`habit:${h.id}`}>{h.title} (Habit)</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      ) : (
+        <div>
+          {(projects.length === 0 && goals.length === 0 && habits.length === 0) ? (
+            <div style={{ fontSize: 12, color: 'var(--color-text3)', lineHeight: 1.4 }}>
+              No projects, goals, or habits yet.{' '}
+              <span
+                onClick={() => dispatch({ type: 'SET_VIEW', payload: 'pgh' })}
+                style={{ color: 'var(--color-accent)', cursor: 'pointer' }}
+              >
+                Create one
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {projects.length > 0 && (
+                <select
+                  onChange={(e) => { if (e.target.value) setMapping({ type: 'project', id: Number(e.target.value) }) }}
+                  defaultValue=""
+                  style={{
+                    border: '1px solid var(--color-border)', borderRadius: 6, padding: '3px 8px',
+                    fontFamily: 'inherit', fontSize: 11, background: '#fff', color: 'var(--color-text)',
+                    outline: 'none', cursor: 'pointer',
+                  }}
+                >
+                  <option value="" disabled>Link to Project…</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.title}</option>
+                  ))}
+                </select>
+              )}
+              {goals.length > 0 && (
+                <select
+                  onChange={(e) => { if (e.target.value) setMapping({ type: 'goal', id: Number(e.target.value) }) }}
+                  defaultValue=""
+                  style={{
+                    border: '1px solid var(--color-border)', borderRadius: 6, padding: '3px 8px',
+                    fontFamily: 'inherit', fontSize: 11, background: '#fff', color: 'var(--color-text)',
+                    outline: 'none', cursor: 'pointer',
+                  }}
+                >
+                  <option value="" disabled>Link to Goal…</option>
+                  {goals.map((g) => (
+                    <option key={g.id} value={g.id}>{g.title}</option>
+                  ))}
+                </select>
+              )}
+              {habits.length > 0 && (
+                <select
+                  onChange={(e) => { if (e.target.value) setMapping({ type: 'habit', id: Number(e.target.value) }) }}
+                  defaultValue=""
+                  style={{
+                    border: '1px solid var(--color-border)', borderRadius: 6, padding: '3px 8px',
+                    fontFamily: 'inherit', fontSize: 11, background: '#fff', color: 'var(--color-text)',
+                    outline: 'none', cursor: 'pointer',
+                  }}
+                >
+                  <option value="" disabled>Link to Habit…</option>
+                  {habits.map((h) => (
+                    <option key={h.id} value={h.id}>{h.title}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function EntryDetail() {
   const { state, dispatch } = useAppState()
   const entry = state.selectedEntry
@@ -423,7 +559,7 @@ export default function EntryDetail() {
           </span>
           {entry.isTaskDone && entry.completedAt && (
             <span style={{ fontSize: 11, color: 'var(--color-accent)', fontWeight: 500, marginLeft: 2 }}>
-              Completed {entry.completedAt.split('T')[0] === new Date().toISOString().split('T')[0] ? fmtTime(entry.completedAt) : fmtDate(entry.completedAt)}
+              Completed {toLocalDateStr(entry.completedAt) === todayLocalStr() ? fmtTime(entry.completedAt) : fmtDate(entry.completedAt)}
             </span>
           )}
           <button
@@ -608,6 +744,15 @@ export default function EntryDetail() {
           }}
           masterTags={allMasterTags}
         />
+
+        {/* PGH Mapping */}
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: 11, color: 'var(--color-text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="barChart" size={11} />
+            Project / Goal / Habit
+          </div>
+          <PGHMapper entry={entry} />
+        </div>
 
         {entry.timeLogs && entry.timeLogs.length > 0 && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--color-border)' }}>

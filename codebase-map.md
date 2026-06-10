@@ -1,7 +1,7 @@
 # JournoPro — Codebase Map
 
 > Reference document for feature development and bug fixes.
-> Last updated: 2026-06-02
+> Last updated: 2026-06-10
 
 ---
 
@@ -37,7 +37,7 @@
 │    └─ AppProvider (useReducer + localStorage sync)  │
 │         └─ App.tsx (view router)                    │
 │              ├─ Sidebar                             │
-│              └─ <ActiveView>   ← one of 7 views     │
+│              └─ <ActiveView>   ← one of 8+ views    │
 │                   ├─ EntryDetail (overlay)          │
 │                   ├─ FloatingTimer (fixed)          │
 │                   └─ AddFolderModal (overlay)       │
@@ -111,7 +111,8 @@ src/
 │           ├── FoldersView.tsx
 │           ├── FolderDetailView.tsx
 │           ├── ParallelView.tsx   # Weekly hourly blocks per timer
-│           └── SettingsView.tsx
+│           ├── SettingsView.tsx
+│           └── PGHView.tsx        # Projects, Goals, Habits dashboard
 └── App.tsx                   # View router shell
 ```
 
@@ -183,12 +184,61 @@ interface TimerState {
 }
 ```
 
+### PGH Entities — Project, Goal, Habit
+
+```ts
+type ProjectStatus = 'idea' | 'plan' | 'active' | 'on-hold' | 'done' | 'archived'
+type GoalStatus = 'plan' | 'in-progress' | 'off-track' | 'delayed' | 're-plan' | 'achieved' | 'archived'
+type HabitStatus = 'schedule' | 'started' | 'small-misses' | 'missing-but-consistent' | 'frequent-misses' | 'irregular' | 'cultivated' | 'archived'
+
+interface SmartGoal {
+  specific: string; measurable: string; achievable: string
+  relevant: string; timeBound: string
+}
+
+interface HabitAnalysis {
+  duration: number | null       // minutes
+  specificTiming: string | null  // e.g. "7:00 AM"
+  money: number | null
+  frequency: string | null       // e.g. "Daily", "3x/week"
+}
+
+interface HabitTrackerEntry {
+  date: string        // YYYY-MM-DD
+  completed: boolean
+  note?: string
+}
+
+interface Project {
+  id: number; title: string; startDate: string | null; endDate: string | null
+  status: ProjectStatus; description?: string; createdAt: string; updatedAt: string
+}
+
+interface Goal {
+  id: number; title: string; startDate: string | null; endDate: string | null
+  status: GoalStatus; smart: SmartGoal | null; description?: string; createdAt: string; updatedAt: string
+}
+
+interface Habit {
+  id: number; title: string; startDate: string | null; endDate: string | null
+  status: HabitStatus; analysis: HabitAnalysis; tracker: HabitTrackerEntry[]
+  description?: string; createdAt: string; updatedAt: string
+}
+
+interface PGHMapping {
+  type: 'project' | 'goal' | 'habit'
+  id: number
+}
+```
+
+Entry now includes `pghMapping: PGHMapping | null` to link a task to a PGH entity.
+
 ### `ViewName` — all valid views
 
 ```ts
 type ViewName =
   | 'home' | 'inbox' | 'search' | 'calendar'
-  | 'folders' | 'settings' | 'parallel'
+  | 'folders' | 'settings' | 'parallel' | 'pgh'
   | `folder:${string}`   // e.g. "folder:Clients/Acme Corp"
 ```
 
@@ -209,8 +259,11 @@ type ViewName =
   activeTimers: TimerState[]
   addFolderEntry: Entry | null  // Opens AddFolderModal
   currency: CurrencySymbol
-  searchFilters: SearchFilters  // Persistent search view filters (query, filterEntity, filterFolder, filterTag, filterFrom, filterTo, tasksOnly)
-  toast: string | null         // Toast notification message (auto-dismissed after 3s)
+  searchFilters: SearchFilters  // Persistent search view filters
+  toast: string | null         // Toast notification message
+  projects: Project[]       // All projects
+  goals: Goal[]             // All goals
+  habits: Habit[]           // All habits
 }
 ```
 
@@ -238,6 +291,10 @@ type ViewName =
 | `SET_SEARCH_FILTERS` | `SearchFilters` | Persist search view filters (query, entity/folder/tag selections, date range, tasksOnly) |
 | `SET_TOAST` | `string \| null` | Show/dismiss toast notification (auto-dismissed after 3s) |
 | `TOGGLE_TASK_DONE` | `number` (id) | Toggle task done state; sets `completedAt` (ISO) when completing; clears on undo; blocks undo past same-day |
+| `SET_PROJECTS` / `ADD_PROJECT` / `UPDATE_PROJECT` / `DELETE_PROJECT` | various | CRUD for projects; DELETE also unmaps all entries from that project |
+| `SET_GOALS` / `ADD_GOAL` / `UPDATE_GOAL` / `DELETE_GOAL` | various | CRUD for goals; DELETE also unmaps all entries from that goal |
+| `SET_HABITS` / `ADD_HABIT` / `UPDATE_HABIT` / `DELETE_HABIT` | various | CRUD for habits; DELETE also unmaps all entries from that habit |
+| `ADD_HABIT_TRACKER_ENTRY` | `{ habitId, entry: HabitTrackerEntry }` | Append a new daily tracker entry to a habit |
 
 ### localStorage sync
 
@@ -270,6 +327,7 @@ if (view === 'calendar')  → <CalendarView />
 if (view === 'parallel')  → <ParallelView />
 if (view === 'folders')   → <FoldersView />
 if (view === 'settings')  → <SettingsView />
+if (view === 'pgh')       → <PGHView />
 if (view.startsWith('folder:')) → <FolderDetailView key={view} folderName={view.slice(7)} />  // key forces re-mount when navigating between folders
 ```
 
@@ -446,7 +504,7 @@ SSR-safe generic hook. Reads from localStorage in `useEffect` (avoids hydration 
 ```tsx
 <Icon name="folder" size={16} color="var(--color-accent)" />
 ```
-Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare` (stopwatch added for parallel/nav)
+Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare`, `barChart`, `square`, `checkSquare` (barChart added for PGH nav)
 
 #### `Chip.tsx`
 ```tsx
@@ -521,6 +579,8 @@ Edit mode toggle changes:
 
 Save dispatches `UPDATE_ENTRY`. Back button dispatches `SELECT_ENTRY(null)`.
 
+PGH Mapping section: shows the linked Project/Goal/Habit with a dropdown to change or unmap; if unmapped, shows inline select dropdowns for each entity type. "Create one" link navigates to PGH view if no entities exist.
+
 Comments section at bottom: lists existing comments (newest first) with delete button on each, plus an inline textarea + Add button to post new comments (Ctrl+Enter to submit, Enter for newline). Edit uses textarea instead of input. Comment text preserves newlines via `white-space: pre-wrap`. Comments dispatch `ADD_COMMENT` / `DELETE_COMMENT`.
 
 ---
@@ -534,6 +594,7 @@ No props. Reads `state.view`, `state.entries`, `state.sidebarCollapsed`.
 - Inbox badge = `entries.filter(e => !e.folder).length`
 - Overdue badge = `entries.filter(e => isOverdue(e)).length`
 - Folder list = root folder names only (first segment of all folder paths)
+- PGH nav item added after Tasks, using `barChart` icon
 - Settings at bottom always visible
 
 #### `NavItem.tsx`
@@ -632,6 +693,14 @@ Week = Monday to Sunday. 24-hour rows in a 7-column grid. For each entry with `t
 Overlapping blocks within the same day are laid out side-by-side using a greedy column-assignment algorithm (`assignColumns`): blocks sorted by start time are placed in the first free column, creating equally-sized columns per overlapping group. The `blockPositions` memoized map stores `{ col, totalCols }` per block key (`entryId-startedAt`) for use during rendering.
 
 Week navigation: left/right chevron buttons and "Today" button (resets to offset 0).
+
+#### `PGHView.tsx`
+Dashboard for managing Projects, Goals, and Habits. Three-tab interface (Projects / Goals / Habits) with inline create/edit/delete modals for each entity type.
+
+- **Projects**: statuses (idea, plan, active, on-hold, done, archived), title, description, start/end dates
+- **Goals**: statuses (plan, in-progress, off-track, delayed, re-plan, achieved, archived), with optional S.M.A.R.T. toggle revealing Specific, Measurable, Achievable, Relevant, Time-bound text fields.
+- **Habits**: statuses (schedule, started, small-misses, missing-but-consistent, frequent-misses, irregular, cultivated, archived), with a 7-day tracker grid for daily completion marking and analysis parameters (duration, specific timing, money, frequency).
+- Each card shows mapped task count. Deletion unmaps all associated entries. Archived entities shown in a separate collapsed section.
 
 #### `SettingsView.tsx`
 Tabbed interface showing all entities, tags, and folders derived from entries — each with usage count, inline rename, and add-new capability.
@@ -795,5 +864,8 @@ style={{ color: 'var(--color-accent)', background: 'var(--color-accent-light)' }
 | `jp_activeTimers` | `TimerState[]` JSON | Active parallel timers (persists across refresh) |
 | `jp_currency` | `string` | Selected currency symbol (`$`, `€`, `£`, etc.) |
 | `jp_searchFilters` | `SearchFilters` JSON | Search view filter state (query, entity/folder/tag selections, date range, tasksOnly toggle) |
+| `jp_projects` | `Project[]` JSON | All projects |
+| `jp_goals` | `Goal[]` JSON | All goals |
+| `jp_habits` | `Habit[]` JSON | All habits |
 
 Written by `AppContext.tsx` via `useEffect`. Read once on mount via hydration guard (`useRef`). On first visit (empty localStorage), `SEED_ENTRIES` from `src/lib/seedData.ts` is used.

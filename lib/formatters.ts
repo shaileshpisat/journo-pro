@@ -31,9 +31,17 @@ export function fmtTime(iso: string): string {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
 }
 
+function parseLocalDate(iso: string): Date {
+  if (iso.length === 10) {
+    const [y, m, day] = iso.split('-').map(Number)
+    return new Date(y, m - 1, day)
+  }
+  return new Date(iso)
+}
+
 export function fmtDate(iso: string | null): string {
   if (!iso) return ''
-  const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''))
+  const d = parseLocalDate(iso)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const target = new Date(d)

@@ -26,7 +26,7 @@ export default function SettingsView() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `journopro-backup-${new Date().toISOString().split('T')[0]}.json`
+      const d = new Date(); a.download = `journopro-backup-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.json`
       a.click()
       URL.revokeObjectURL(url)
       setStatusMsg('Backup downloaded successfully.')
@@ -127,6 +127,7 @@ export default function SettingsView() {
         isTaskDone: false,
         completedAt: null,
         archived: false,
+        pghMapping: null,
       })
     } else if (tab === 'tags') {
       updatedEntries.push({
@@ -146,6 +147,7 @@ export default function SettingsView() {
         isTaskDone: false,
         completedAt: null,
         archived: false,
+        pghMapping: null,
       })
     } else if (tab === 'folders') {
       updatedEntries.push({
@@ -165,6 +167,7 @@ export default function SettingsView() {
         isTaskDone: false,
         completedAt: null,
         archived: false,
+        pghMapping: null,
       })
     }
 

@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { Entry, Comment } from '@/lib/types'
 import { fmtTime, fmtDate, fmtAmt, fmtDuration } from '@/lib/formatters'
-import { isOverdue } from '@/lib/predicates'
+import { isOverdue, todayLocalStr, toLocalDateStr } from '@/lib/predicates'
 import { TimerState } from '@/lib/types'
 import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
@@ -251,7 +251,7 @@ export default function EntryCard({
             {entry.isTaskDone && entry.completedAt && (
               <Chip
                 icon="check"
-                label={'Done ' + (entry.completedAt.split('T')[0] === new Date().toISOString().split('T')[0] ? fmtTime(entry.completedAt) : fmtDate(entry.completedAt))}
+                label={'Done ' + (toLocalDateStr(entry.completedAt) === todayLocalStr() ? fmtTime(entry.completedAt) : fmtDate(entry.completedAt))}
                 bg="var(--color-accent-light)"
                 color="var(--color-accent)"
                 small
@@ -282,7 +282,7 @@ export default function EntryCard({
             {entry.isTaskDone && entry.completedAt && (
               <Chip
                 icon="check"
-                label={'Done ' + (entry.completedAt.split('T')[0] === new Date().toISOString().split('T')[0] ? fmtTime(entry.completedAt) : fmtDate(entry.completedAt))}
+                label={'Done ' + (toLocalDateStr(entry.completedAt) === todayLocalStr() ? fmtTime(entry.completedAt) : fmtDate(entry.completedAt))}
                 bg="var(--color-accent-light)"
                 color="var(--color-accent)"
                 small

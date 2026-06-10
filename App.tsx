@@ -20,6 +20,7 @@ import ScrollToTop from '@/components/ScrollToTop'
 import AddFolderModal from '@/components/modals/AddFolderModal'
 import Toast from '@/components/ui/Toast'
 import ParallelView from '@/components/views/ParallelView'
+import PGHView from '@/components/views/PGHView'
 
 export default function App() {
   const { state } = useAppState()
@@ -44,6 +45,7 @@ export default function App() {
     if (view === 'entities') return <EntitiesView />
     if (view === 'transactions') return <TransactionsView />
     if (view === 'parallel') return <ParallelView />
+    if (view === 'pgh') return <PGHView />
     if (view.startsWith('folder:')) return <FolderDetailView key={view} folderName={view.slice(7)} />
     return <HomeView />
   }

@@ -1,7 +1,7 @@
 import { Entry, Comment } from './types'
 
 const today = new Date()
-const fmt = (d: Date) => d.toISOString().split('T')[0]
+const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const daysAgo = (n: number) => {
   const d = new Date(today)
   d.setDate(d.getDate() - n)
@@ -31,6 +31,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 2,
@@ -49,6 +50,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 3,
@@ -67,6 +69,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 4,
@@ -85,6 +88,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 5,
@@ -103,6 +107,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 6,
@@ -121,6 +126,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 7,
@@ -139,6 +145,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 8,
@@ -157,6 +164,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 9,
@@ -175,6 +183,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 10,
@@ -193,6 +202,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 11,
@@ -211,6 +221,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 12,
@@ -229,6 +240,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 13,
@@ -247,6 +259,7 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
   {
     id: 14,
@@ -265,5 +278,6 @@ export const SEED_ENTRIES: Entry[] = [
   completedAt: null,
     comments: [],
     archived: false,
+    pghMapping: null,
   },
 ]

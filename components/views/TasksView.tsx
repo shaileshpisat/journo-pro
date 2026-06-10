@@ -4,12 +4,13 @@ import { useState, useMemo } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { Entry } from '@/lib/types'
 import { fmtDate } from '@/lib/formatters'
+import { toLocalDateStr } from '@/lib/predicates'
 import EntryCard from '@/components/entry/EntryCard'
 import SectionHead from '@/components/ui/SectionHead'
 import Icon from '@/components/ui/Icon'
 
 function getDateKey(task: Entry): string {
-  return task.actionDate || task.timestamp.split('T')[0]
+  return task.actionDate || toLocalDateStr(task.timestamp)
 }
 
 function groupByDate(tasks: Entry[]): [string, Entry[]][] {
@@ -39,7 +40,7 @@ export default function TasksView() {
 
   const tomorrowDate = new Date()
   tomorrowDate.setDate(tomorrowDate.getDate() + 1)
-  const tomorrowStr = tomorrowDate.toISOString().split('T')[0]
+  const tomorrowStr = `${tomorrowDate.getFullYear()}-${String(tomorrowDate.getMonth() + 1).padStart(2, '0')}-${String(tomorrowDate.getDate()).padStart(2, '0')}`
   const current = active.filter((e) => !e.actionDate || e.actionDate <= tomorrowStr)
   const futureAll = active
     .filter((e) => e.actionDate && e.actionDate > tomorrowStr)
@@ -56,7 +57,7 @@ export default function TasksView() {
         weeks.push(cur)
         const d = new Date(ds)
         d.setDate(d.getDate() + 6)
-        weekEnd = d.toISOString().split('T')[0]
+        weekEnd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       }
       let dayGroup = cur.find(([k]) => k === ds)
       if (!dayGroup) {
@@ -72,7 +73,7 @@ export default function TasksView() {
   const completedGroups = useMemo(() => {
     const map = new Map<string, Entry[]>()
     for (const t of completed) {
-      const key = t.completedAt ? t.completedAt.split('T')[0] : getDateKey(t)
+      const key = t.completedAt ? toLocalDateStr(t.completedAt) : getDateKey(t)
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(t)
     }

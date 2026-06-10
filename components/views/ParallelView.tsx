@@ -6,7 +6,7 @@ import Icon from '@/components/ui/Icon'
 import type { Entry, TimeLog } from '@/lib/types'
 
 function fmt(d: Date): string {
-  return d.toISOString().split('T')[0]
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function getColor(entry: Entry): string {

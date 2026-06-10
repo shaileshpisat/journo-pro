@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { useAppState } from '@/context/AppContext'
-import { isToday, isOverdue } from '@/lib/predicates'
+import { isToday, isOverdue, todayLocalStr, toLocalDateStr } from '@/lib/predicates'
 import { fmtAmt } from '@/lib/formatters'
 import { EntryHistory } from '@/lib/types'
 import JournalInput from '@/components/entry/JournalInput'
@@ -11,10 +11,6 @@ import TodayTimeline, { TimeLogRowData } from '@/components/entry/TodayTimeline'
 import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
 import SectionHead from '@/components/ui/SectionHead'
-
-function todayStr() {
-  return new Date().toISOString().split('T')[0]
-}
 
 export default function HomeView() {
   const { state, dispatch } = useAppState()
@@ -31,7 +27,7 @@ export default function HomeView() {
   const activeEntries = entries.filter((e) => !e.archived)
   const todayEntries = activeEntries.filter((e) => isToday(e.timestamp)).slice(0, 6)
   const todayAction = activeEntries.filter(
-    (e) => e.actionDate === todayStr() && !isToday(e.timestamp)
+    (e) => e.actionDate === todayLocalStr() && !isToday(e.timestamp)
   )
   const overdue = activeEntries.filter((e) => isOverdue(e) && !e.isTaskDone)
 
@@ -44,12 +40,12 @@ export default function HomeView() {
   const hasSummary = todayTags.length || todayFolders.length || todayEntities.length
 
   const todayHistory = useMemo(() => {
-    const today = todayStr()
+    const today = todayLocalStr()
     const items: { history: EntryHistory; entryText: string; timestamp: number }[] = []
     state.entries.forEach((e) => {
       if (!e.history) return
       e.history.forEach((h) => {
-        if (new Date(h.timestamp).toISOString().split('T')[0] === today) {
+        if (toLocalDateStr(h.timestamp) === today) {
           items.push({ history: h, entryText: e.text, timestamp: h.timestamp })
         }
       })
@@ -58,12 +54,12 @@ export default function HomeView() {
   }, [state.entries])
 
   const todayTimeTracking = useMemo(() => {
-    const today = todayStr()
+    const today = todayLocalStr()
     const items: TimeLogRowData[] = []
     state.entries.forEach((e) => {
       if (!e.timeLogs) return
       e.timeLogs.forEach((log) => {
-        if (new Date(log.startedAt).toISOString().split('T')[0] === today) {
+        if (toLocalDateStr(log.startedAt) === today) {
           items.push({ entryText: e.text, entryId: e.id, ...log })
         }
       })

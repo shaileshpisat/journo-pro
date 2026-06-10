@@ -1,13 +1,22 @@
 import { Entry } from './types'
+import { todayLocalStr } from './predicates'
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
 
 function todayStr(): string {
-  return new Date().toISOString().split('T')[0]
+  return todayLocalStr()
 }
 
 function daysAhead(n: number): string {
   const d = new Date()
   d.setDate(d.getDate() + n)
-  return d.toISOString().split('T')[0]
+  return localDateStr(d)
 }
 
 function parseCaretDate(raw: string): string | null {
@@ -28,7 +37,7 @@ function parseCaretDate(raw: string): string | null {
   if (/^\d{1,2}\/\d{1,2}$/.test(cleaned)) {
     const [m, d] = cleaned.split('/').map(Number)
     const date = new Date(new Date().getFullYear(), m - 1, d)
-    return date.toISOString().split('T')[0]
+    return localDateStr(date)
   }
   if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned
   return null
@@ -74,7 +83,7 @@ export function parseEntry(text: string): Partial<Entry> {
         parseInt(dateMatch[1]) - 1,
         parseInt(dateMatch[2])
       )
-      result.actionDate = d.toISOString().split('T')[0]
+      result.actionDate = localDateStr(d)
     }
   }
 

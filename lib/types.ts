@@ -21,6 +21,72 @@ export interface Comment {
   timestamp: string
 }
 
+export type ProjectStatus = 'idea' | 'plan' | 'active' | 'on-hold' | 'done' | 'archived'
+export type GoalStatus = 'plan' | 'in-progress' | 'off-track' | 'delayed' | 're-plan' | 'achieved' | 'archived'
+export type HabitStatus = 'schedule' | 'started' | 'small-misses' | 'missing-but-consistent' | 'frequent-misses' | 'irregular' | 'cultivated' | 'archived'
+
+export interface SmartGoal {
+  specific: string
+  measurable: string
+  achievable: string
+  relevant: string
+  timeBound: string
+}
+
+export interface HabitAnalysis {
+  duration: number | null
+  specificTiming: string | null
+  money: number | null
+  frequency: string | null
+}
+
+export interface HabitTrackerEntry {
+  date: string
+  completed: boolean
+  note?: string
+}
+
+export interface Project {
+  id: number
+  title: string
+  startDate: string | null
+  endDate: string | null
+  status: ProjectStatus
+  description?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Goal {
+  id: number
+  title: string
+  startDate: string | null
+  endDate: string | null
+  status: GoalStatus
+  smart: SmartGoal | null
+  description?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Habit {
+  id: number
+  title: string
+  startDate: string | null
+  endDate: string | null
+  status: HabitStatus
+  analysis: HabitAnalysis
+  tracker: HabitTrackerEntry[]
+  description?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PGHMapping {
+  type: 'project' | 'goal' | 'habit'
+  id: number
+}
+
 export type ViewName =
   | 'home'
   | 'inbox'
@@ -33,6 +99,7 @@ export type ViewName =
   | 'entities'
   | 'transactions'
   | 'parallel'
+  | 'pgh'
   | `folder:${string}`
 
 export interface Entry {
@@ -52,6 +119,7 @@ export interface Entry {
   completedAt: string | null
   archived: boolean
   comments: Comment[]
+  pghMapping: PGHMapping | null
 }
 
 export interface FolderNode {
@@ -101,6 +169,9 @@ export interface AppState {
   currency: CurrencySymbol
   searchFilters: SearchFilters
   toast: string | null
+  projects: Project[]
+  goals: Goal[]
+  habits: Habit[]
 }
 
 export type Action =
@@ -127,3 +198,16 @@ export type Action =
   | { type: 'SET_CURRENCY'; payload: CurrencySymbol }
   | { type: 'SET_SEARCH_FILTERS'; payload: SearchFilters }
   | { type: 'SET_TOAST'; payload: string | null }
+  | { type: 'SET_PROJECTS'; payload: Project[] }
+  | { type: 'ADD_PROJECT'; payload: Project }
+  | { type: 'UPDATE_PROJECT'; payload: Project }
+  | { type: 'DELETE_PROJECT'; payload: number }
+  | { type: 'SET_GOALS'; payload: Goal[] }
+  | { type: 'ADD_GOAL'; payload: Goal }
+  | { type: 'UPDATE_GOAL'; payload: Goal }
+  | { type: 'DELETE_GOAL'; payload: number }
+  | { type: 'SET_HABITS'; payload: Habit[] }
+  | { type: 'ADD_HABIT'; payload: Habit }
+  | { type: 'UPDATE_HABIT'; payload: Habit }
+  | { type: 'DELETE_HABIT'; payload: number }
+  | { type: 'ADD_HABIT_TRACKER_ENTRY'; payload: { habitId: number; entry: HabitTrackerEntry } }

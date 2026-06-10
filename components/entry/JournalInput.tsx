@@ -179,12 +179,13 @@ export default function JournalInput() {
       amountType: parsed.amountType || null,
       mentions: parsed.mentions || [],
       timeLogs: [],
-        history: [],
-        comments: [],
-        isTask: markTask,
+      history: [],
+      comments: [],
+      isTask: markTask,
       isTaskDone: false,
       completedAt: null,
       archived: false,
+      pghMapping: null,
     }
     dispatch({ type: 'ADD_ENTRY', payload: entry })
     setText('')

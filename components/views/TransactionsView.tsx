@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { Entry } from '@/lib/types'
 import { fmtAmt, fmtDate } from '@/lib/formatters'
+import { toLocalDateStr } from '@/lib/predicates'
 import EntryCard from '@/components/entry/EntryCard'
 import SectionHead from '@/components/ui/SectionHead'
 import Icon from '@/components/ui/Icon'
@@ -25,7 +26,7 @@ export default function TransactionsView() {
   }
 
   const groupedByDate = activeEntries.reduce<Record<string, Entry[]>>((acc, entry) => {
-    const dateKey = entry.actionDate || new Date(entry.timestamp).toISOString().split('T')[0]
+    const dateKey = entry.actionDate || toLocalDateStr(entry.timestamp)
     if (!acc[dateKey]) acc[dateKey] = []
     acc[dateKey].push(entry)
     return acc

@@ -5,6 +5,7 @@ import { useAppState } from '@/context/AppContext'
 import { folderMatches } from '@/lib/folderUtils'
 import { Entry } from '@/lib/types'
 import { fmtDate } from '@/lib/formatters'
+import { toLocalDateStr } from '@/lib/predicates'
 import TodayTimeline, { HistoryRowData, TimeLogRowData } from '@/components/entry/TodayTimeline'
 import Chip from '@/components/ui/Chip'
 import FolderChip from '@/components/ui/FolderChip'
@@ -17,7 +18,7 @@ interface FolderDetailViewProps {
 function groupByDate(entries: Entry[]): [string, Entry[]][] {
   const map = new Map<string, Entry[]>()
   for (const e of entries) {
-    const key = e.timestamp.split('T')[0]
+    const key = toLocalDateStr(e.timestamp)
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(e)
   }
@@ -83,7 +84,7 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
     folderEntries.forEach((e) => {
       if (!e.history) return
       e.history.forEach((h) => {
-        const dateKey = new Date(h.timestamp).toISOString().split('T')[0]
+        const dateKey = toLocalDateStr(h.timestamp)
         if (!map.has(dateKey)) map.set(dateKey, [])
         map.get(dateKey)!.push({ history: h, entryText: e.text, timestamp: h.timestamp })
       })
@@ -99,7 +100,7 @@ export default function FolderDetailView({ folderName }: FolderDetailViewProps) 
     folderEntries.forEach((e) => {
       if (!e.timeLogs) return
       e.timeLogs.forEach((log) => {
-        const dateKey = new Date(log.startedAt).toISOString().split('T')[0]
+        const dateKey = toLocalDateStr(log.startedAt)
         if (!map.has(dateKey)) map.set(dateKey, [])
         map.get(dateKey)!.push({ entryText: e.text, entryId: e.id, ...log })
       })

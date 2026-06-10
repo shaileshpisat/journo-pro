@@ -140,6 +140,13 @@ const PATHS: Record<string, React.ReactNode> = {
   messageSquare: (
     <path d="M3 2H13C13.55 2 14 2.45 14 3V11C14 11.55 13.55 12 13 12H7L4 14V12H3C2.45 12 2 11.55 2 11V3C2 2.45 2.45 2 3 2Z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
   ),
+  barChart: (
+    <>
+      <rect x="2" y="10" width="3" height="4" rx="0.8" fill="currentColor" />
+      <rect x="6.5" y="6" width="3" height="8" rx="0.8" fill="currentColor" />
+      <rect x="11" y="2" width="3" height="12" rx="0.8" fill="currentColor" />
+    </>
+  ),
   square: (
     <rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
   ),
