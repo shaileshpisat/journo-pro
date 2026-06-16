@@ -72,19 +72,19 @@ export default function HomeView() {
     return items.sort((a, b) => a.startedAt - b.startedAt)
   }, [state.entries])
 
-  const activeReminders = state.reminders.filter((r) => !r.done)
   const todayStr = todayLocalStr()
-  const overdueReminders = activeReminders.filter((r) => r.date < todayStr)
-  const todayReminders = activeReminders.filter((r) => r.date === todayStr)
-  const olderReminders = activeReminders.filter((r) => r.date < todayStr)
-  const futureReminders = activeReminders.filter((r) => r.date > todayStr)
-  const hasReminders = activeReminders.length > 0
-
+  const visibleReminders = state.reminders.filter(
+    (r) => !r.done || (r.completedAt && toLocalDateStr(r.completedAt) === todayStr)
+  )
+  const overdueReminders = visibleReminders.filter((r) => !r.done && r.date < todayStr)
+  const todayReminders = visibleReminders.filter((r) => r.date === todayStr)
+  const olderReminders = visibleReminders.filter((r) => r.date < todayStr)
+  const futureReminders = visibleReminders.filter((r) => r.date > todayStr)
   const handleAddReminder = () => {
     if (!newReminderTitle.trim()) return
     dispatch({
       type: 'ADD_REMINDER',
-      payload: { id: Date.now(), title: newReminderTitle.trim(), date: newReminderDate, done: false },
+      payload: { id: Date.now(), title: newReminderTitle.trim(), date: newReminderDate, done: false, completedAt: null },
     })
     setNewReminderTitle('')
     setNewReminderDate(todayLocalStr())
@@ -92,7 +92,10 @@ export default function HomeView() {
   }
 
   const handleToggleReminder = (r: Reminder) => {
-    dispatch({ type: 'UPDATE_REMINDER', payload: { ...r, done: !r.done } })
+    dispatch({
+      type: 'UPDATE_REMINDER',
+      payload: { ...r, done: !r.done, completedAt: r.done ? null : new Date().toISOString() },
+    })
   }
 
   const handleTimerToggle = (entry: import('@/lib/types').Entry) => {
@@ -104,370 +107,565 @@ export default function HomeView() {
     dispatch({ type: 'TOGGLE_TASK_DONE', payload: entry.id })
   }
 
+  const sidebarW = state.sidebarCollapsed ? 52 : 220
+
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px 80px' }}>
-      <p
+      {/* Floating reminders panel — fixed on the left */}
+      <div
+        ref={remindersRef}
         style={{
-          textAlign: 'center',
-          fontSize: 13,
-          color: 'var(--color-text3)',
-          marginBottom: 6,
-          fontFamily: "'DM Mono', monospace",
+          position: 'fixed',
+          left: sidebarW + 16,
+          bottom: 24,
+          width: 210,
+          maxHeight: 'calc(100vh - 150px)',
+          overflowY: 'auto',
+          padding: 14,
+          background: 'var(--color-bg2)',
+          borderRadius: 'var(--radius)',
+          border: '1px solid var(--color-border)',
+          zIndex: 40,
+          display: 'block',
         }}
       >
-        {new Date().toLocaleDateString('en-US', {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric',
-        })}
-      </p>
-      <h1
-        style={{
-          textAlign: 'center',
-          fontSize: 26,
-          fontWeight: 300,
-          color: 'var(--color-text)',
-          marginBottom: 32,
-          letterSpacing: '-0.03em',
-        }}
-      >
-        What&apos;s happening?
-      </h1>
-
-      <JournalInput />
-
-      {/* Today summary pills */}
-      {todayEntries.length > 0 && hasSummary && (
-        <div
-          style={{
-            maxWidth: 680,
-            margin: '16px auto 0',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 16,
-            padding: '14px 18px',
-            background: '#fff',
-            borderRadius: 12,
-            border: '1px solid var(--color-border)',
-          }}
-        >
-          {todayEntities.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <div className="flex justify-between items-center mb-2.5">
+            <div className="flex items-center gap-2">
               <span
                 style={{
                   fontSize: 11,
                   fontWeight: 600,
-                  color: 'var(--color-text3)',
+                  color: 'var(--color-text2)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  whiteSpace: 'nowrap',
+                  letterSpacing: '0.07em',
                 }}
               >
-                Entities
+                Reminders
               </span>
-              {todayEntities.map((e) => (
-                <Chip key={e} icon="entity" label={`${e} (${entityCount(e)})`} small />
-              ))}
+              {visibleReminders.length > 0 && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    background: overdueReminders.length > 0 ? 'var(--color-red)' : 'var(--color-bg3)',
+                    color: overdueReminders.length > 0 ? '#fff' : 'var(--color-text3)',
+                    borderRadius: 99,
+                    padding: '1px 6px',
+                    minWidth: 18,
+                    textAlign: 'center',
+                  }}
+                >
+                  {visibleReminders.length}
+                </span>
+              )}
             </div>
-          )}
-          {todayFolders.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: 'var(--color-text3)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Folders
-              </span>
-              {todayFolders.map((f) => (
-                <FolderChip key={f} path={f} small count={folderCount(f)} />
-              ))}
-            </div>
-          )}
-          {todayTags.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: 'var(--color-text3)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Tags
-              </span>
-              {todayTags.map((t) => (
-                <Chip key={t} icon="tag" label={`#${t} (${tagCount(t)})`} small />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Quick nav */}
-      {(todayAction.length > 0 || overdue.length > 0 || overdueReminders.length > 0) && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginTop: 24,
-            justifyContent: 'center',
-          }}
-        >
-          {todayAction.length > 0 && (
             <button
-              onClick={() => scrollTo(actionTodayRef)}
+              onClick={() => setShowReminderForm((v) => !v)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
-                padding: '7px 16px',
-                borderRadius: 99,
-                border: '1px solid var(--color-amber)',
-                background: 'var(--color-amber-light)',
-                color: 'var(--color-text)',
-                fontFamily: 'inherit',
-                fontSize: 13,
-                fontWeight: 500,
+                gap: 3,
+                padding: '3px 8px',
+                borderRadius: 6,
+                border: '1px solid var(--color-border)',
+                background: '#fff',
                 cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <span
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: 'var(--color-amber)',
-                }}
-              />
-              Action Today
-              <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
-                {todayAction.length}
-              </span>
-            </button>
-          )}
-          {overdue.length > 0 && (
-            <button
-              onClick={() => scrollTo(needsActionRef)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '7px 16px',
-                borderRadius: 99,
-                border: '1px solid var(--color-red)',
-                background: 'var(--color-red-light)',
-                color: 'var(--color-text)',
                 fontFamily: 'inherit',
-                fontSize: 13,
+                fontSize: 11,
                 fontWeight: 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <span
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: 'var(--color-red)',
-                }}
-              />
-              Needs Action
-              <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
-                {overdue.length}
-              </span>
-            </button>
-          )}
-          {overdueReminders.length > 0 && (
-            <button
-              onClick={() => scrollTo(remindersRef)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '7px 16px',
-                borderRadius: 99,
-                border: '1px solid var(--color-accent)',
-                background: 'var(--color-accent-light)',
-                color: 'var(--color-text)',
-                fontFamily: 'inherit',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <Icon name="bell" size={14} color="var(--color-accent)" />
-              Reminders
-              <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
-                {overdueReminders.length}
-              </span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Today timeline */}
-      {(todayEntries.length > 0 || todayHistory.length > 0 || todayTimeTracking.length > 0) && (
-        <div style={{ marginTop: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
                 color: 'var(--color-text2)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.07em',
               }}
             >
-              Today
-            </span>
-            {todayEntries.length > 0 && (
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)' }}>
-                {todayEntries.length} new {todayEntries.length === 1 ? 'entry' : 'entries'}
+              <Icon name="plus" size={11} />
+              Add
+            </button>
+          </div>
+
+          {showReminderForm && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                marginBottom: 10,
+                padding: 8,
+                background: '#fff',
+                borderRadius: 6,
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              <input
+                placeholder="Reminder text…"
+                value={newReminderTitle}
+                onChange={(e) => setNewReminderTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddReminder() }}
+                style={{
+                  border: 'none',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                  fontSize: 12,
+                  color: 'var(--color-text)',
+                  background: 'transparent',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <input
+                  type="date"
+                  value={newReminderDate}
+                  onChange={(e) => setNewReminderDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    fontFamily: 'inherit',
+                    fontSize: 11,
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 4,
+                    padding: '3px 6px',
+                    color: 'var(--color-text2)',
+                  }}
+                />
+                <button
+                  onClick={handleAddReminder}
+                  style={{
+                    padding: '3px 10px',
+                    borderRadius: 4,
+                    border: 'none',
+                    background: 'var(--color-accent)',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: 11,
+                    fontWeight: 600,
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
+
+          {visibleReminders.length === 0 && !showReminderForm && (
+            <p style={{ fontSize: 12, color: 'var(--color-text3)', textAlign: 'center', margin: '12px 0' }}>
+              No reminders yet.
+            </p>
+          )}
+
+          {todayReminders.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text2)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>
+                Today
               </span>
-            )}
-            {todayHistory.length > 0 && (
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)' }}>
-                {todayHistory.length} {todayHistory.length === 1 ? 'change' : 'changes'}
+              {todayReminders.map((r) => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, background: '#fff', marginBottom: 3 }}>
+                  <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+                    <Icon name={r.done ? 'checkSquare' : 'square'} size={14} color="var(--color-text3)" />
+                  </span>
+                  <span style={{ fontSize: 12, color: r.done ? 'var(--color-text3)' : 'var(--color-text)', textDecoration: r.done ? 'line-through' : 'none', lineHeight: 1.3 }}>{r.title}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {olderReminders.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-red)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>
+                Older
               </span>
+              {olderReminders.map((r) => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, background: '#fff', marginBottom: 3 }}>
+                  <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+                    <Icon name={r.done ? 'checkSquare' : 'square'} size={14} color="var(--color-text3)" />
+                  </span>
+                  <span style={{ flex: 1, fontSize: 12, color: r.done ? 'var(--color-text3)' : 'var(--color-text)', textDecoration: r.done ? 'line-through' : 'none', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                  <span style={{ fontSize: 10, color: 'var(--color-red)', flexShrink: 0 }}>
+                    {new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {futureReminders.length > 0 && (
+            <div style={{ marginBottom: 2 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text2)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>
+                Future
+              </span>
+              {futureReminders.map((r) => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, background: '#fff', marginBottom: 3 }}>
+                  <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+                    <Icon name={r.done ? 'checkSquare' : 'square'} size={14} color="var(--color-text3)" />
+                  </span>
+                  <span style={{ flex: 1, fontSize: 12, color: r.done ? 'var(--color-text3)' : 'var(--color-text)', textDecoration: r.done ? 'line-through' : 'none', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                  <span style={{ fontSize: 10, color: 'var(--color-text3)', flexShrink: 0 }}>
+                    {new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+      <p
+          style={{
+            textAlign: 'center',
+            fontSize: 13,
+            color: 'var(--color-text3)',
+            marginBottom: 6,
+            fontFamily: "'DM Mono', monospace",
+          }}
+        >
+          {new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </p>
+        <h1
+          style={{
+            textAlign: 'center',
+            fontSize: 26,
+            fontWeight: 300,
+            color: 'var(--color-text)',
+            marginBottom: 32,
+            letterSpacing: '-0.03em',
+          }}
+        >
+          What&apos;s happening?
+        </h1>
+
+        <JournalInput />
+
+        {/* Today summary pills */}
+        {todayEntries.length > 0 && hasSummary && (
+          <div
+            style={{
+              maxWidth: 680,
+              margin: '16px auto 0',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 16,
+              padding: '14px 18px',
+              background: '#fff',
+              borderRadius: 12,
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            {todayEntities.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--color-text3)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Entities
+                </span>
+                {todayEntities.map((e) => (
+                  <Chip key={e} icon="entity" label={`${e} (${entityCount(e)})`} small />
+                ))}
+              </div>
             )}
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            {todayFolders.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--color-text3)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Folders
+                </span>
+                {todayFolders.map((f) => (
+                  <FolderChip key={f} path={f} small count={folderCount(f)} />
+                ))}
+              </div>
+            )}
+            {todayTags.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--color-text3)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Tags
+                </span>
+                {todayTags.map((t) => (
+                  <Chip key={t} icon="tag" label={`#${t} (${tagCount(t)})`} small />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Quick nav */}
+        {(todayAction.length > 0 || overdue.length > 0 || overdueReminders.length > 0) && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginTop: 24,
+              justifyContent: 'center',
+            }}
+          >
+            {todayAction.length > 0 && (
+              <button
+                onClick={() => scrollTo(actionTodayRef)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 16px',
+                  borderRadius: 99,
+                  border: '1px solid var(--color-amber)',
+                  background: 'var(--color-amber-light)',
+                  color: 'var(--color-text)',
+                  fontFamily: 'inherit',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: 'var(--color-amber)',
+                  }}
+                />
+                Action Today
+                <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
+                  {todayAction.length}
+                </span>
+              </button>
+            )}
+            {overdue.length > 0 && (
+              <button
+                onClick={() => scrollTo(needsActionRef)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 16px',
+                  borderRadius: 99,
+                  border: '1px solid var(--color-red)',
+                  background: 'var(--color-red-light)',
+                  color: 'var(--color-text)',
+                  fontFamily: 'inherit',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: 'var(--color-red)',
+                  }}
+                />
+                Needs Action
+                <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
+                  {overdue.length}
+                </span>
+              </button>
+            )}
+            {overdueReminders.length > 0 && (
+              <button
+                onClick={() => scrollTo(remindersRef)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 16px',
+                  borderRadius: 99,
+                  border: '1px solid var(--color-accent)',
+                  background: 'var(--color-accent-light)',
+                  color: 'var(--color-text)',
+                  fontFamily: 'inherit',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Icon name="bell" size={14} color="var(--color-accent)" />
+                Reminders
+                <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
+                  {overdueReminders.length}
+                </span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Today timeline */}
+        {(todayEntries.length > 0 || todayHistory.length > 0 || todayTimeTracking.length > 0) && (
+          <div style={{ marginTop: 32 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--color-text2)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.07em',
+                }}
+              >
+                Today
+              </span>
+              {todayEntries.length > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)' }}>
+                  {todayEntries.length} new {todayEntries.length === 1 ? 'entry' : 'entries'}
+                </span>
+              )}
               {todayHistory.length > 0 && (
-                <span
-                  onClick={() => setShowChanges((v) => !v)}
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: 'var(--color-text3)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    userSelect: 'none',
-                  }}
-                >
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text3)' }}>
+                  {todayHistory.length} {todayHistory.length === 1 ? 'change' : 'changes'}
+                </span>
+              )}
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+                {todayHistory.length > 0 && (
                   <span
+                    onClick={() => setShowChanges((v) => !v)}
                     style={{
-                      width: 28,
-                      height: 14,
-                      borderRadius: 99,
-                      background: showChanges ? 'var(--color-accent)' : 'var(--color-bg3)',
-                      position: 'relative',
-                      transition: 'background 0.15s',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--color-text3)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      userSelect: 'none',
                     }}
                   >
                     <span
                       style={{
-                        position: 'absolute',
-                        top: 2,
-                        left: showChanges ? 16 : 2,
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        background: '#fff',
-                        transition: 'left 0.15s',
+                        width: 28,
+                        height: 14,
+                        borderRadius: 99,
+                        background: showChanges ? 'var(--color-accent)' : 'var(--color-bg3)',
+                        position: 'relative',
+                        transition: 'background 0.15s',
                       }}
-                    />
+                    >
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: 2,
+                          left: showChanges ? 16 : 2,
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: '#fff',
+                          transition: 'left 0.15s',
+                        }}
+                      />
+                    </span>
+                    Changes
                   </span>
-                  Changes
-                </span>
-              )}
-              {todayTimeTracking.length > 0 && (
-                <span
-                  onClick={() => setShowTimeTracking((v) => !v)}
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: 'var(--color-text3)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    userSelect: 'none',
-                  }}
-                >
+                )}
+                {todayTimeTracking.length > 0 && (
                   <span
+                    onClick={() => setShowTimeTracking((v) => !v)}
                     style={{
-                      width: 28,
-                      height: 14,
-                      borderRadius: 99,
-                      background: showTimeTracking ? 'var(--color-accent)' : 'var(--color-bg3)',
-                      position: 'relative',
-                      transition: 'background 0.15s',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--color-text3)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      userSelect: 'none',
                     }}
                   >
                     <span
                       style={{
-                        position: 'absolute',
-                        top: 2,
-                        left: showTimeTracking ? 16 : 2,
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        background: '#fff',
-                        transition: 'left 0.15s',
+                        width: 28,
+                        height: 14,
+                        borderRadius: 99,
+                        background: showTimeTracking ? 'var(--color-accent)' : 'var(--color-bg3)',
+                        position: 'relative',
+                        transition: 'background 0.15s',
                       }}
-                    />
+                    >
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: 2,
+                          left: showTimeTracking ? 16 : 2,
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: '#fff',
+                          transition: 'left 0.15s',
+                        }}
+                      />
+                    </span>
+                    Time
                   </span>
-                  Time
-                </span>
-              )}
+                )}
+              </div>
+            </div>
+            <TodayTimeline
+              entries={todayEntries}
+              historyItems={showChanges ? todayHistory : []}
+              timeTrackingItems={showTimeTracking ? todayTimeTracking : []}
+              onClick={(e) => dispatch({ type: 'SELECT_ENTRY', payload: e })}
+              activeTimers={activeTimers}
+              onTimerToggle={handleTimerToggle}
+              onTaskToggle={handleTaskToggle}
+              currency={state.currency}
+            />
+          </div>
+        )}
+
+        {/* Action today */}
+        {todayAction.length > 0 && (
+          <div
+            ref={actionTodayRef}
+            style={{
+              marginTop: 32,
+              padding: 16,
+              background: 'var(--color-amber-light)',
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--color-amber)',
+            }}
+          >
+            <SectionHead title="Action today" count={todayAction.length} />
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4 }}>
+              {todayAction.map((e) => (
+                <div key={e.id} style={{ minWidth: 260, maxWidth: 280, flexShrink: 0 }}>
+                  <EntryCard
+                    entry={e}
+                    onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
+                    minimal
+                    timerActive={activeTimers.some((t) => t.entryId === e.id)}
+                    onTimerToggle={handleTimerToggle}
+                    onTaskToggle={handleTaskToggle}
+                    currency={state.currency}
+                  />
+                </div>
+              ))}
             </div>
           </div>
-          <TodayTimeline
-            entries={todayEntries}
-            historyItems={showChanges ? todayHistory : []}
-            timeTrackingItems={showTimeTracking ? todayTimeTracking : []}
-            onClick={(e) => dispatch({ type: 'SELECT_ENTRY', payload: e })}
-            activeTimers={activeTimers}
-            onTimerToggle={handleTimerToggle}
-            onTaskToggle={handleTaskToggle}
-            currency={state.currency}
-          />
-        </div>
-      )}
-
-      {/* Action today */}
-      {todayAction.length > 0 && (
-        <div
-          ref={actionTodayRef}
-          style={{
-            marginTop: 32,
-            padding: 16,
-            background: 'var(--color-amber-light)',
-            borderRadius: 'var(--radius)',
-            border: '1px solid var(--color-amber)',
-          }}
-        >
-          <SectionHead title="Action today" count={todayAction.length} />
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4 }}>
-            {todayAction.map((e) => (
-              <div key={e.id} style={{ minWidth: 260, maxWidth: 280, flexShrink: 0 }}>
-                <EntryCard
-                  entry={e}
-                  onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
-                  minimal
-timerActive={activeTimers.some((t) => t.entryId === e.id)}
-                   onTimerToggle={handleTimerToggle}
-                   onTaskToggle={handleTaskToggle}
-                   currency={state.currency}
-                 />
-               </div>
-             ))}
-           </div>
-         </div>
-       )}
+        )}
 
         {/* Needs action */}
         {overdue.length > 0 && (
@@ -493,195 +691,15 @@ timerActive={activeTimers.some((t) => t.entryId === e.id)}
                       overdue
                       minimal
                       timerActive={activeTimers.some((t) => t.entryId === e.id)}
-                     onTimerToggle={handleTimerToggle}
-                     onTaskToggle={handleTaskToggle}
-                     currency={state.currency}
-                   />
-                 </div>
-               ))}
-           </div>
-         </div>
-       )}
-
-       {/* Reminders */}
-       <div
-         ref={remindersRef}
-         style={{
-           marginTop: 32,
-           padding: 16,
-           background: 'var(--color-bg2)',
-           borderRadius: 'var(--radius)',
-           border: '1px solid var(--color-border)',
-         }}
-       >
-         <div className="flex justify-between items-center mb-2.5">
-           <div className="flex items-center gap-2">
-             <span
-               style={{
-                 fontSize: 12,
-                 fontWeight: 600,
-                 color: 'var(--color-text2)',
-                 textTransform: 'uppercase',
-                 letterSpacing: '0.07em',
-               }}
-             >
-               Reminders
-             </span>
-             {activeReminders.length > 0 && (
-               <span
-                 style={{
-                   fontSize: 11,
-                   fontWeight: 600,
-                   background: overdueReminders.length > 0 ? 'var(--color-red)' : 'var(--color-bg3)',
-                   color: overdueReminders.length > 0 ? '#fff' : 'var(--color-text3)',
-                   borderRadius: 99,
-                   padding: '1px 7px',
-                   minWidth: 20,
-                   textAlign: 'center',
-                 }}
-               >
-                 {activeReminders.length}
-               </span>
-             )}
-           </div>
-           <button
-             onClick={() => setShowReminderForm((v) => !v)}
-             style={{
-               display: 'flex',
-               alignItems: 'center',
-               gap: 4,
-               padding: '4px 10px',
-               borderRadius: 6,
-               border: '1px solid var(--color-border)',
-               background: '#fff',
-               cursor: 'pointer',
-               fontFamily: 'inherit',
-               fontSize: 12,
-               fontWeight: 500,
-               color: 'var(--color-text2)',
-             }}
-           >
-             <Icon name="plus" size={12} />
-             Add
-           </button>
-         </div>
-
-         {showReminderForm && (
-           <div
-             style={{
-               display: 'flex',
-               gap: 8,
-               marginBottom: 12,
-               padding: 10,
-               background: '#fff',
-               borderRadius: 8,
-               border: '1px solid var(--color-border)',
-               alignItems: 'center',
-             }}
-           >
-             <input
-             placeholder="Reminder text…"
-             value={newReminderTitle}
-             onChange={(e) => setNewReminderTitle(e.target.value)}
-             onKeyDown={(e) => { if (e.key === 'Enter') handleAddReminder() }}
-             style={{
-               flex: 1,
-               border: 'none',
-               outline: 'none',
-               fontFamily: 'inherit',
-               fontSize: 13,
-               color: 'var(--color-text)',
-               background: 'transparent',
-             }}
-           />
-           <input
-             type="date"
-             value={newReminderDate}
-             onChange={(e) => setNewReminderDate(e.target.value)}
-             style={{
-               fontFamily: 'inherit',
-               fontSize: 12,
-               border: '1px solid var(--color-border)',
-               borderRadius: 6,
-               padding: '4px 8px',
-               color: 'var(--color-text2)',
-               background: '#fff',
-             }}
-           />
-           <button
-             onClick={handleAddReminder}
-             style={{
-               padding: '4px 12px',
-               borderRadius: 6,
-               border: 'none',
-               background: 'var(--color-accent)',
-               color: '#fff',
-               cursor: 'pointer',
-               fontFamily: 'inherit',
-               fontSize: 12,
-               fontWeight: 600,
-             }}
-           >
-             Save
-           </button>
-         </div>
-       )}
-
-       {!hasReminders && !showReminderForm && (
-         <p style={{ fontSize: 13, color: 'var(--color-text3)', textAlign: 'center', margin: '16px 0' }}>
-           No reminders yet.
-         </p>
-       )}
-
-       {todayReminders.length > 0 && (
-         <div style={{ marginBottom: 12 }}>
-           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text2)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Today</span>
-           {todayReminders.map((r) => (
-             <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, background: '#fff', marginBottom: 4 }}>
-               <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex' }}>
-                 <Icon name="square" size={16} color="var(--color-text3)" />
-               </span>
-               <span style={{ flex: 1, fontSize: 13, color: 'var(--color-text)' }}>{r.title}</span>
-             </div>
-           ))}
-         </div>
-       )}
-
-       {olderReminders.length > 0 && (
-         <div style={{ marginBottom: 12 }}>
-           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-red)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Older</span>
-           {olderReminders.map((r) => (
-             <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, background: '#fff', marginBottom: 4 }}>
-               <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex' }}>
-                 <Icon name="square" size={16} color="var(--color-text3)" />
-               </span>
-               <span style={{ flex: 1, fontSize: 13, color: 'var(--color-text)' }}>{r.title}</span>
-               <span style={{ fontSize: 11, color: 'var(--color-red)' }}>
-                 {new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-               </span>
-             </div>
-           ))}
-         </div>
-       )}
-
-       {futureReminders.length > 0 && (
-         <div style={{ marginBottom: 4 }}>
-           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text2)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Future</span>
-           {futureReminders.map((r) => (
-             <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, background: '#fff', marginBottom: 4 }}>
-               <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex' }}>
-                 <Icon name="square" size={16} color="var(--color-text3)" />
-               </span>
-               <span style={{ flex: 1, fontSize: 13, color: 'var(--color-text)' }}>{r.title}</span>
-               <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
-                 {new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-               </span>
-             </div>
-           ))}
-         </div>
-       )}
-     </div>
-
-   </div>
- )
- }
+                      onTimerToggle={handleTimerToggle}
+                      onTaskToggle={handleTaskToggle}
+                      currency={state.currency}
+                    />
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+    </div>
+  )
+}

@@ -193,6 +193,7 @@ interface Reminder {
   title: string
   date: string     // YYYY-MM-DD
   done: boolean
+  completedAt: string | null  // ISO timestamp when marked done; null when active
 }
 ```
 
@@ -685,7 +686,7 @@ Sections (in order):
 5. **Today timeline** — `<TodayTimeline>` (entries where `isToday(timestamp)`, max 6) with a toggle switch (accent/gray pill) to show/hide history changes
 6. **Action today** — grid of minimal `<EntryCard>`s where `actionDate === today && !isToday(timestamp)`, amber panel
 7. **Needs action** — horizontal scroll of overdue minimal cards, red panel
-8. **Reminders** — standalone reminders section (bg2 background, border border). Shows non-done reminders grouped by Today / Older / Future. Each reminder row has an unchecked square icon (toggles done on click), the reminder title text, and for Older/Future the date in `Mon DD` format. A "+ Add" button in the header toggles an inline form (text input + date picker + Save button). Completed reminders disappear from the section. The quick-nav Reminders button shows count of overdue (past-date) reminders only.
+8. **Reminders** — floating panel on the left side of the timeline, fixed-position just after the sidebar. Visible only when there are visible reminders (non-done + today-completed). Shows reminders grouped by Today / Older / Future. Each reminder row has a square/checkSquare icon (toggles done on click), the reminder title text (strikethrough + muted color when done today), and for Older/Future the date in `Mon DD` format. A "+ Add" button in the header toggles an inline form (text input + date picker + Save button). Completed reminders show with strikethrough until end of day; the next day they vanish. The quick-nav Reminders button shows count of overdue (past-date) reminders only.
 
 #### `InboxView.tsx`
 Sections (in order):

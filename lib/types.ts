@@ -155,6 +155,7 @@ export interface Reminder {
   title: string
   date: string    // YYYY-MM-DD
   done: boolean
+  completedAt: string | null  // ISO timestamp when marked done
 }
 
 export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
