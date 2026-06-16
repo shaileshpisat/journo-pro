@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react'
-import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState, CurrencySymbol, DEFAULT_SEARCH_FILTERS, SearchFilters, Project, Goal, Habit, PendingRecurringEntry, PERIOD_TAGS } from '@/lib/types'
+import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState, CurrencySymbol, DEFAULT_SEARCH_FILTERS, SearchFilters, Project, Goal, Habit, Reminder, PendingRecurringEntry, PERIOD_TAGS } from '@/lib/types'
 import { SEED_ENTRIES } from '@/lib/seedData'
 import { todayLocalStr, toLocalDateStr } from '@/lib/predicates'
 
@@ -18,6 +18,7 @@ const initialState: AppState = {
   projects: [],
   goals: [],
   habits: [],
+  reminders: [],
   reloadPending: false,
   pendingRecurring: [],
 }
@@ -248,6 +249,14 @@ function reducer(state: AppState, action: Action): AppState {
             : h
         ),
       }
+    case 'SET_REMINDERS':
+      return { ...state, reminders: action.payload }
+    case 'ADD_REMINDER':
+      return { ...state, reminders: [...state.reminders, action.payload] }
+    case 'UPDATE_REMINDER':
+      return { ...state, reminders: state.reminders.map((r) => (r.id === action.payload.id ? action.payload : r)) }
+    case 'DELETE_REMINDER':
+      return { ...state, reminders: state.reminders.filter((r) => r.id !== action.payload) }
     case 'SET_RELOAD_PENDING':
       return { ...state, reloadPending: action.payload }
     case 'SET_PENDING_RECURRING':
@@ -418,6 +427,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'SET_HABITS', payload: parsed })
       }
     } catch {}
+    try {
+      const storedReminders = window.localStorage.getItem('jp_reminders')
+      if (storedReminders) {
+        const parsed: Reminder[] = JSON.parse(storedReminders)
+        dispatch({ type: 'SET_REMINDERS', payload: parsed })
+      }
+    } catch {}
   }, [])
 
   const recurringChecked = useRef(false)
@@ -532,6 +548,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated.current) return
     window.localStorage.setItem('jp_habits', JSON.stringify(state.habits))
   }, [state.habits])
+
+  // Persist reminders
+  useEffect(() => {
+    if (!hydrated.current) return
+    window.localStorage.setItem('jp_reminders', JSON.stringify(state.reminders))
+  }, [state.reminders])
 
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>
 }

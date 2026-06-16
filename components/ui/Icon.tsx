@@ -162,6 +162,9 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M5 8.5L7.5 11L11 6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </>
   ),
+  bell: (
+    <path d="M8 1.5C5.5 1.5 4 3.5 4 5.5V8L2.5 11H13.5L12 8V5.5C12 3.5 10.5 1.5 8 1.5ZM9.5 13C9.5 13.83 8.83 14.5 8 14.5C7.17 14.5 6.5 13.83 6.5 13" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  ),
 }
 
 export default function Icon({ name, size = 16, color }: IconProps) {

@@ -150,6 +150,13 @@ export interface TimerState {
   segments: TimerSegment[]
 }
 
+export interface Reminder {
+  id: number
+  title: string
+  date: string    // YYYY-MM-DD
+  done: boolean
+}
+
 export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
   query: '',
   filterEntity: [],
@@ -182,6 +189,7 @@ export interface AppState {
   projects: Project[]
   goals: Goal[]
   habits: Habit[]
+  reminders: Reminder[]
   reloadPending: boolean
   pendingRecurring: PendingRecurringEntry[]
 }
@@ -227,3 +235,7 @@ export type Action =
   | { type: 'SET_RELOAD_PENDING'; payload: boolean }
   | { type: 'SET_PENDING_RECURRING'; payload: PendingRecurringEntry[] }
   | { type: 'RESOLVE_RECURRING'; payload: { entryId: number; selectedTag: string } }
+  | { type: 'SET_REMINDERS'; payload: Reminder[] }
+  | { type: 'ADD_REMINDER'; payload: Reminder }
+  | { type: 'UPDATE_REMINDER'; payload: Reminder }
+  | { type: 'DELETE_REMINDER'; payload: number }

@@ -1,7 +1,7 @@
 # JournoPro — Codebase Map
 
 > Reference document for feature development and bug fixes.
-> Last updated: 2026-06-10 (added 12-hour auto-reload + recurring task date advancement + `RecurringTagPicker` modal)
+> Last updated: 2026-06-16 (added Reminders feature — standalone reminders with title, date, checkbox)
 
 ---
 
@@ -185,6 +185,19 @@ interface TimerState {
 }
 ```
 
+### `Reminder` — standalone reminder with checkbox
+
+```ts
+interface Reminder {
+  id: number
+  title: string
+  date: string     // YYYY-MM-DD
+  done: boolean
+}
+```
+
+Reminders are independent of `Entry` — they have their own state array (`AppState.reminders`), actions (`ADD_REMINDER` / `UPDATE_REMINDER` / `DELETE_REMINDER` / `SET_REMINDERS`), and localStorage key (`jp_reminders`).
+
 ### PGH Entities — Project, Goal, Habit
 
 ```ts
@@ -267,6 +280,7 @@ type ViewName =
   habits: Habit[]           // All habits
   reloadPending: boolean    // True when 12-hour auto-reload is queued
   pendingRecurring: PendingRecurringEntry[]  // Recurring tasks with multiple period tags awaiting user pick
+  reminders: Reminder[]        // Standalone reminders (title, date, done)
 }
 ```
 
@@ -302,6 +316,10 @@ type ViewName =
 | `SET_RELOAD_PENDING` | `boolean` | Set/clear reload-pending flag for 12-hour auto-reload |
 | `SET_PENDING_RECURRING` | `PendingRecurringEntry[]` | Store recurring tasks with multiple period tags awaiting user resolution |
 | `RESOLVE_RECURRING` | `{ entryId, selectedTag }` | Remove other period tags, advance actionDate by selectedTag's period, clear from pending |
+| `SET_REMINDERS` | `Reminder[]` | Replace full reminders array |
+| `ADD_REMINDER` | `Reminder` | Append a new reminder |
+| `UPDATE_REMINDER` | `Reminder` | Replace reminder by id (used for toggle done) |
+| `DELETE_REMINDER` | `number` (id) | Remove a reminder |
 
 ### localStorage sync
 
@@ -513,7 +531,7 @@ SSR-safe generic hook. Reads from localStorage in `useEffect` (avoids hydration 
 ```tsx
 <Icon name="folder" size={16} color="var(--color-accent)" />
 ```
-Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare`, `barChart`, `pin`, `square`, `checkSquare`
+Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare`, `barChart`, `pin`, `square`, `checkSquare`, `bell`
 
 #### `Chip.tsx`
 ```tsx
@@ -663,10 +681,11 @@ Sections (in order):
 1. Date header + "What's happening?" title
 2. `<JournalInput />` (centered, max-width 680px)
 3. Today summary pills (entities/folders/tags used today)
-4. **Quick nav** — centered pill buttons for "Action Today" (amber) and "Needs Action" (red), shown only when items exist; smooth-scroll to the respective section via `ref`
+4. **Quick nav** — centered pill buttons for "Action Today" (amber), "Needs Action" (red), and "Reminders" (accent), shown only when items exist; smooth-scroll to the respective section via `ref`
 5. **Today timeline** — `<TodayTimeline>` (entries where `isToday(timestamp)`, max 6) with a toggle switch (accent/gray pill) to show/hide history changes
 6. **Action today** — grid of minimal `<EntryCard>`s where `actionDate === today && !isToday(timestamp)`, amber panel
 7. **Needs action** — horizontal scroll of overdue minimal cards, red panel
+8. **Reminders** — standalone reminders section (bg2 background, border border). Shows non-done reminders grouped by Today / Older / Future. Each reminder row has an unchecked square icon (toggles done on click), the reminder title text, and for Older/Future the date in `Mon DD` format. A "+ Add" button in the header toggles an inline form (text input + date picker + Save button). Completed reminders disappear from the section. The quick-nav Reminders button shows count of overdue (past-date) reminders only.
 
 #### `InboxView.tsx`
 Sections (in order):
@@ -884,5 +903,6 @@ style={{ color: 'var(--color-accent)', background: 'var(--color-accent-light)' }
 | `jp_projects` | `Project[]` JSON | All projects |
 | `jp_goals` | `Goal[]` JSON | All goals |
 | `jp_habits` | `Habit[]` JSON | All habits |
+| `jp_reminders` | `Reminder[]` JSON | All reminders |
 
 Written by `AppContext.tsx` via `useEffect`. Read once on mount via hydration guard (`useRef`). On first visit (empty localStorage), `SEED_ENTRIES` from `src/lib/seedData.ts` is used.
