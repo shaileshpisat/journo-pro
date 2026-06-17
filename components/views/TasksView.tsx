@@ -38,7 +38,7 @@ export default function TasksView() {
   const { entries, activeTimers } = state
   const [query, setQuery] = useState('')
   const [showFuture, setShowFuture] = useState(false)
-  const [showCompleted, setShowCompleted] = useState(true)
+  const [showCompleted, setShowCompleted] = useState(false)
   const [groupBy, setGroupBy] = useState<'date' | 'folder'>('date')
 
   const tasks = entries.filter((e) => e.isTask && !e.archived)
@@ -277,7 +277,7 @@ export default function TasksView() {
         </div>
       ))}
 
-      {showCompleted && completedGroups.length > 0 && (
+      {(showCompleted || query) && completedGroups.length > 0 && (
         <div style={{ marginTop: 32 }}>
           <SectionHead title="Completed" count={completed.length} />
           {completedGroups.map(([key, group]) => (
