@@ -87,17 +87,16 @@ function HistoryRow({ history, entryText, timestamp, currency = '$' }: { history
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
         <Icon name="edit" size={11} color="var(--color-text3)" />
-        <span style={{ fontWeight: 500, color: 'var(--color-text)' }}>
-          {fmtHistField(history.field)}
+        <span style={{ fontSize: 11, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace", flexShrink: 0 }}>
+          {new Date(timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
         </span>
-        <span style={{ color: 'var(--color-text3)' }}>·</span>
-        <span style={{ color: 'var(--color-text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+        <span style={{ fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
           {entryText.slice(0, 40)}{entryText.length > 40 ? '…' : ''}
         </span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 17 }}>
-        <span style={{ fontSize: 11, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace", flexShrink: 0 }}>
-          {new Date(timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingLeft: 17 }}>
+        <span style={{ color: 'var(--color-text2)' }}>
+          {fmtHistField(history.field)}:
         </span>
         <span style={{ color: 'var(--color-text3)', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
           {fmtHistValue(history.field, history.oldValue, currency)}
