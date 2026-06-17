@@ -23,11 +23,23 @@ function groupByDate(tasks: Entry[]): [string, Entry[]][] {
   return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
 }
 
+function groupByFolder(tasks: Entry[]): [string, Entry[]][] {
+  const map = new Map<string, Entry[]>()
+  for (const t of tasks) {
+    const key = t.folder || 'Uncategorized'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(t)
+  }
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+}
+
 export default function TasksView() {
   const { state, dispatch } = useAppState()
   const { entries, activeTimers } = state
   const [query, setQuery] = useState('')
-  const [futureWeeksShown, setFutureWeeksShown] = useState(0)
+  const [showFuture, setShowFuture] = useState(false)
+  const [showCompleted, setShowCompleted] = useState(true)
+  const [groupBy, setGroupBy] = useState<'date' | 'folder'>('date')
 
   const tasks = entries.filter((e) => e.isTask && !e.archived)
 
@@ -46,39 +58,25 @@ export default function TasksView() {
     .filter((e) => e.actionDate && e.actionDate > tomorrowStr)
     .sort((a, b) => a.actionDate!.localeCompare(b.actionDate!))
 
-  const futureWeeks = useMemo(() => {
-    const weeks: [string, Entry[]][][] = []
-    let cur: [string, Entry[]][] | null = null
-    let weekEnd = ''
-    for (const t of futureAll) {
-      const ds = t.actionDate!
-      if (!cur || ds > weekEnd) {
-        cur = []
-        weeks.push(cur)
-        const d = new Date(ds)
-        d.setDate(d.getDate() + 6)
-        weekEnd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      }
-      let dayGroup = cur.find(([k]) => k === ds)
-      if (!dayGroup) {
-        dayGroup = [ds, []]
-        cur.push(dayGroup)
-      }
-      dayGroup[1].push(t)
-    }
-    return weeks
-  }, [futureAll])
-
-  const activeGroups = useMemo(() => groupByDate(current), [current])
+  const activeGroups = useMemo(
+    () => {
+      const entries = showFuture ? [...current, ...futureAll] : current
+      return groupBy === 'date' ? groupByDate(entries) : groupByFolder(entries)
+    },
+    [showFuture, current, futureAll, groupBy],
+  )
   const completedGroups = useMemo(() => {
-    const map = new Map<string, Entry[]>()
-    for (const t of completed) {
-      const key = t.completedAt ? toLocalDateStr(t.completedAt) : getDateKey(t)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(t)
+    if (groupBy === 'date') {
+      const map = new Map<string, Entry[]>()
+      for (const t of completed) {
+        const key = t.completedAt ? toLocalDateStr(t.completedAt) : getDateKey(t)
+        if (!map.has(key)) map.set(key, [])
+        map.get(key)!.push(t)
+      }
+      return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
     }
-    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
-  }, [completed])
+    return groupByFolder(completed)
+  }, [completed, groupBy])
 
   const handleTimerToggle = (entry: Entry) => {
     if (activeTimers.some((t) => t.entryId === entry.id)) return
@@ -99,8 +97,126 @@ export default function TasksView() {
         <h2 style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em', margin: 0 }}>
           Tasks
         </h2>
-        <span style={{ fontSize: 12, color: 'var(--color-text3)' }}>
-          {active.length} open · {completed.length} done
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 12, color: 'var(--color-text3)' }}>
+            {active.length} open · {completed.length} done · {futureAll.length} future
+          </span>
+          {futureAll.length > 0 && (
+            <span
+              onClick={() => setShowFuture((v) => !v)}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: 'var(--color-text3)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                userSelect: 'none',
+              }}
+            >
+              <span
+                style={{
+                  width: 28,
+                  height: 14,
+                  borderRadius: 99,
+                  background: showFuture ? 'var(--color-accent)' : 'var(--color-bg3)',
+                  position: 'relative',
+                  transition: 'background 0.15s',
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 2,
+                    left: showFuture ? 16 : 2,
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    background: '#fff',
+                    transition: 'left 0.15s',
+                  }}
+                />
+              </span>
+              Show future
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Filter bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 4, background: 'var(--color-bg3)', borderRadius: 8, padding: 2 }}>
+          <span
+            onClick={() => setGroupBy('date')}
+            style={{
+              padding: '5px 14px',
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              color: groupBy === 'date' ? '#fff' : 'var(--color-text3)',
+              background: groupBy === 'date' ? 'var(--color-accent)' : 'transparent',
+              transition: '0.12s',
+              userSelect: 'none',
+            }}
+          >
+            Date
+          </span>
+          <span
+            onClick={() => setGroupBy('folder')}
+            style={{
+              padding: '5px 14px',
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              color: groupBy === 'folder' ? '#fff' : 'var(--color-text3)',
+              background: groupBy === 'folder' ? 'var(--color-accent)' : 'transparent',
+              transition: '0.12s',
+              userSelect: 'none',
+            }}
+          >
+            Folder
+          </span>
+        </div>
+        <span
+          onClick={() => setShowCompleted((v) => !v)}
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: 'var(--color-text3)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            userSelect: 'none',
+          }}
+        >
+          <span
+            style={{
+              width: 28,
+              height: 14,
+              borderRadius: 99,
+              background: showCompleted ? 'var(--color-accent)' : 'var(--color-bg3)',
+              position: 'relative',
+              transition: 'background 0.15s',
+            }}
+          >
+            <span
+              style={{
+                position: 'absolute',
+                top: 2,
+                left: showCompleted ? 16 : 2,
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: '#fff',
+                transition: 'left 0.15s',
+              }}
+            />
+          </span>
+          Show completed
         </span>
       </div>
 
@@ -143,7 +259,7 @@ export default function TasksView() {
 
       {activeGroups.map(([dateKey, group]) => (
         <div key={dateKey} style={{ marginBottom: 24 }}>
-          <SectionHead title={fmtDate(dateKey)} count={group.length} />
+          <SectionHead title={groupBy === 'folder' ? dateKey : fmtDate(dateKey)} count={group.length} />
           <div style={{ display: 'grid', gap: 8 }}>
             {group.map((e) => (
               <EntryCard
@@ -161,56 +277,13 @@ export default function TasksView() {
         </div>
       ))}
 
-      {futureWeeks.length > futureWeeksShown && (
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <button
-            onClick={() => setFutureWeeksShown((w) => w + 1)}
-            style={{
-              background: 'var(--color-bg2)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 8,
-              padding: '8px 20px',
-              fontFamily: 'inherit',
-              fontSize: 13,
-              color: 'var(--color-text2)',
-              cursor: 'pointer',
-            }}
-          >
-            Show future entries for a week
-          </button>
-        </div>
-      )}
-      {futureWeeksShown > 0 && futureWeeks.slice(0, futureWeeksShown).map((week, wi) => (
-        <div key={`fw-${wi}`} style={{ marginBottom: wi + 1 < futureWeeksShown ? 24 : 0 }}>
-          {week.map(([dateKey, group]) => (
-            <div key={dateKey} style={{ marginBottom: 16 }}>
-              <SectionHead title={fmtDate(dateKey)} count={group.length} />
-              <div style={{ display: 'grid', gap: 8 }}>
-                {group.map((e) => (
-                  <EntryCard
-                    key={e.id}
-                    entry={e}
-                    onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
-                    timerActive={activeTimers.some((t) => t.entryId === e.id)}
-                    onTimerToggle={handleTimerToggle}
-                    onTaskToggle={handleTaskToggle}
-                    onSetActionDate={handleSetActionDate}
-                    currency={state.currency}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      ))}
-
-      {completedGroups.length > 0 && (
+      {showCompleted && completedGroups.length > 0 && (
         <div style={{ marginTop: 32 }}>
           <SectionHead title="Completed" count={completed.length} />
-          {completedGroups.map(([dateKey, group]) => (
-            <div key={dateKey} style={{ marginBottom: 16 }}>
+          {completedGroups.map(([key, group]) => (
+            <div key={key} style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, color: 'var(--color-text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                {fmtDate(dateKey)}
+                {groupBy === 'folder' ? key : fmtDate(key)}
               </div>
               <div style={{ display: 'grid', gap: 8 }}>
                 {group.map((e) => (
