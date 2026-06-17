@@ -24,6 +24,9 @@ export default function HomeView() {
   const [showReminderForm, setShowReminderForm] = useState(false)
   const [newReminderTitle, setNewReminderTitle] = useState('')
   const [newReminderDate, setNewReminderDate] = useState(todayLocalStr())
+  const [editingReminderId, setEditingReminderId] = useState<number | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDate, setEditDate] = useState('')
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -98,6 +101,27 @@ export default function HomeView() {
     })
   }
 
+  const handleEditReminder = (r: Reminder) => {
+    setEditingReminderId(r.id)
+    setEditTitle(r.title)
+    setEditDate(r.date)
+  }
+
+  const handleSaveEdit = () => {
+    if (editingReminderId === null || !editTitle.trim()) return
+    const reminder = state.reminders.find((r) => r.id === editingReminderId)
+    if (!reminder) return
+    dispatch({
+      type: 'UPDATE_REMINDER',
+      payload: { ...reminder, title: editTitle.trim(), date: editDate },
+    })
+    setEditingReminderId(null)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingReminderId(null)
+  }
+
   const handleTimerToggle = (entry: import('@/lib/types').Entry) => {
     if (activeTimers.some((t) => t.entryId === entry.id)) return
     dispatch({ type: 'SET_TIMER', payload: { entryId: entry.id, segments: [{ startedAt: Date.now(), description: '' }] } })
@@ -118,7 +142,7 @@ export default function HomeView() {
           position: 'fixed',
           left: sidebarW + 16,
           bottom: 24,
-          width: 210,
+          width: 280,
           maxHeight: 'calc(100vh - 150px)',
           overflowY: 'auto',
           padding: 14,
@@ -255,12 +279,26 @@ export default function HomeView() {
                 Today
               </span>
               {todayReminders.map((r) => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, background: '#fff', marginBottom: 3 }}>
-                  <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
-                    <Icon name={r.done ? 'checkSquare' : 'square'} size={14} color="var(--color-text3)" />
-                  </span>
-                  <span style={{ fontSize: 12, color: r.done ? 'var(--color-text3)' : 'var(--color-text)', textDecoration: r.done ? 'line-through' : 'none', lineHeight: 1.3 }}>{r.title}</span>
-                </div>
+                editingReminderId === r.id ? (
+                  <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 8px', borderRadius: 4, background: '#fff', marginBottom: 3, border: '1px solid var(--color-accent)' }}>
+                    <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') handleCancelEdit() }} placeholder="Reminder text…" style={{ border: '1px solid var(--color-border)', borderRadius: 4, padding: '4px 6px', fontFamily: 'inherit', fontSize: 12, outline: 'none', color: 'var(--color-text)' }} />
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} style={{ flex: 1, fontFamily: 'inherit', fontSize: 11, border: '1px solid var(--color-border)', borderRadius: 4, padding: '3px 6px', color: 'var(--color-text2)' }} />
+                      <button onClick={handleSaveEdit} style={{ padding: '3px 10px', borderRadius: 4, border: 'none', background: 'var(--color-accent)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 600 }}>Save</button>
+                      <button onClick={handleCancelEdit} style={{ padding: '3px 8px', borderRadius: 4, border: '1px solid var(--color-border)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, color: 'var(--color-text2)' }}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, background: '#fff', marginBottom: 3 }}>
+                    <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+                      <Icon name={r.done ? 'checkSquare' : 'square'} size={14} color="var(--color-text3)" />
+                    </span>
+                    <span title={r.title} style={{ flex: 1, fontSize: 12, color: r.done ? 'var(--color-text3)' : 'var(--color-text)', textDecoration: r.done ? 'line-through' : 'none', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                    <span onClick={() => handleEditReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0, opacity: 0.4 }}>
+                      <Icon name="edit" size={12} color="var(--color-text3)" />
+                    </span>
+                  </div>
+                )
               ))}
             </div>
           )}
@@ -271,15 +309,29 @@ export default function HomeView() {
                 Older
               </span>
               {olderReminders.map((r) => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, background: '#fff', marginBottom: 3 }}>
-                  <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
-                    <Icon name={r.done ? 'checkSquare' : 'square'} size={14} color="var(--color-text3)" />
-                  </span>
-                  <span style={{ flex: 1, fontSize: 12, color: r.done ? 'var(--color-text3)' : 'var(--color-text)', textDecoration: r.done ? 'line-through' : 'none', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
-                  <span style={{ fontSize: 10, color: 'var(--color-red)', flexShrink: 0 }}>
-                    {new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                </div>
+                editingReminderId === r.id ? (
+                  <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 8px', borderRadius: 4, background: '#fff', marginBottom: 3, border: '1px solid var(--color-accent)' }}>
+                    <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') handleCancelEdit() }} placeholder="Reminder text…" style={{ border: '1px solid var(--color-border)', borderRadius: 4, padding: '4px 6px', fontFamily: 'inherit', fontSize: 12, outline: 'none', color: 'var(--color-text)' }} />
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} style={{ flex: 1, fontFamily: 'inherit', fontSize: 11, border: '1px solid var(--color-border)', borderRadius: 4, padding: '3px 6px', color: 'var(--color-text2)' }} />
+                      <button onClick={handleSaveEdit} style={{ padding: '3px 10px', borderRadius: 4, border: 'none', background: 'var(--color-accent)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 600 }}>Save</button>
+                      <button onClick={handleCancelEdit} style={{ padding: '3px 8px', borderRadius: 4, border: '1px solid var(--color-border)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, color: 'var(--color-text2)' }}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, background: '#fff', marginBottom: 3 }}>
+                    <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+                      <Icon name={r.done ? 'checkSquare' : 'square'} size={14} color="var(--color-text3)" />
+                    </span>
+                    <span title={r.title} style={{ flex: 1, fontSize: 12, color: r.done ? 'var(--color-text3)' : 'var(--color-text)', textDecoration: r.done ? 'line-through' : 'none', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                    <span onClick={() => handleEditReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0, opacity: 0.4 }}>
+                      <Icon name="edit" size={12} color="var(--color-text3)" />
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--color-red)', flexShrink: 0 }}>
+                      {new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                )
               ))}
             </div>
           )}
@@ -290,15 +342,29 @@ export default function HomeView() {
                 Future
               </span>
               {futureReminders.map((r) => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, background: '#fff', marginBottom: 3 }}>
-                  <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
-                    <Icon name={r.done ? 'checkSquare' : 'square'} size={14} color="var(--color-text3)" />
-                  </span>
-                  <span style={{ flex: 1, fontSize: 12, color: r.done ? 'var(--color-text3)' : 'var(--color-text)', textDecoration: r.done ? 'line-through' : 'none', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
-                  <span style={{ fontSize: 10, color: 'var(--color-text3)', flexShrink: 0 }}>
-                    {new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                </div>
+                editingReminderId === r.id ? (
+                  <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 8px', borderRadius: 4, background: '#fff', marginBottom: 3, border: '1px solid var(--color-accent)' }}>
+                    <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') handleCancelEdit() }} placeholder="Reminder text…" style={{ border: '1px solid var(--color-border)', borderRadius: 4, padding: '4px 6px', fontFamily: 'inherit', fontSize: 12, outline: 'none', color: 'var(--color-text)' }} />
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} style={{ flex: 1, fontFamily: 'inherit', fontSize: 11, border: '1px solid var(--color-border)', borderRadius: 4, padding: '3px 6px', color: 'var(--color-text2)' }} />
+                      <button onClick={handleSaveEdit} style={{ padding: '3px 10px', borderRadius: 4, border: 'none', background: 'var(--color-accent)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 600 }}>Save</button>
+                      <button onClick={handleCancelEdit} style={{ padding: '3px 8px', borderRadius: 4, border: '1px solid var(--color-border)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, color: 'var(--color-text2)' }}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, background: '#fff', marginBottom: 3 }}>
+                    <span onClick={() => handleToggleReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+                      <Icon name={r.done ? 'checkSquare' : 'square'} size={14} color="var(--color-text3)" />
+                    </span>
+                    <span title={r.title} style={{ flex: 1, fontSize: 12, color: r.done ? 'var(--color-text3)' : 'var(--color-text)', textDecoration: r.done ? 'line-through' : 'none', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                    <span onClick={() => handleEditReminder(r)} style={{ cursor: 'pointer', display: 'flex', flexShrink: 0, opacity: 0.4 }}>
+                      <Icon name="edit" size={12} color="var(--color-text3)" />
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--color-text3)', flexShrink: 0 }}>
+                      {new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                )
               ))}
             </div>
           )}
