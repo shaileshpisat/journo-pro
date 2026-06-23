@@ -168,6 +168,12 @@ const PATHS: Record<string, React.ReactNode> = {
   refresh: (
     <path d="M13 8C13 5.24 10.76 3 8 3C5.79 3 3.93 4.45 3.24 6.5M3 8C3 10.76 5.24 13 8 13C9.86 13 11.46 11.72 12.24 10M13 4.5V8H9.5M3 11.5V8H6.5" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
   ),
+  download: (
+    <path d="M8 2v8M4 6l4 4 4-4M2 13h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+  ),
+  upload: (
+    <path d="M8 14V6M4 10l4-4 4 4M2 3h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+  ),
 }
 
 export default function Icon({ name, size = 16, color }: IconProps) {

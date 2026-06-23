@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { isPeriodTag, formatPeriodLabel, parsePeriodConfig, AmountType } from '@/lib/types'
 import { fmtAmt } from '@/lib/formatters'
@@ -166,6 +166,64 @@ export default function RecurringView() {
     setEditingId(null)
   }
 
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleExport = () => {
+    const exportData = recurringEntries.map((e) => ({
+      text: e.text,
+      actionDate: e.actionDate,
+      tags: e.tags,
+      amount: e.amount,
+      amountType: e.amountType,
+      isTaskDone: e.isTaskDone,
+    }))
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'recurring-export.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string)
+        if (!Array.isArray(data)) return
+        data.forEach((item, i) => {
+          const entry = {
+            id: Date.now() + i,
+            text: item.text || '',
+            timestamp: new Date().toISOString(),
+            actionDate: item.actionDate || null,
+            tags: Array.isArray(item.tags) ? item.tags : ['recurring'],
+            folder: null,
+            amount: typeof item.amount === 'number' ? item.amount : null,
+            amountType: item.amountType || null,
+            mentions: [],
+            timeLogs: [],
+            history: [],
+            isTask: true,
+            isTaskDone: !!item.isTaskDone,
+            completedAt: null,
+            archived: false,
+            comments: [],
+            pghMapping: null,
+          }
+          dispatch({ type: 'ADD_ENTRY', payload: entry })
+        })
+      } catch {
+        /* ignore invalid file */
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
   return (
     <div style={{ padding: '32px 40px', maxWidth: 800, margin: '0 auto' }}>
       {/* Header */}
@@ -173,27 +231,78 @@ export default function RecurringView() {
         <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0, color: 'var(--color-text)' }}>
           Recurring
         </h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            background: showForm ? 'var(--color-bg3)' : 'var(--color-accent)',
-            color: showForm ? 'var(--color-text)' : '#fff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '8px 16px',
-            fontFamily: 'inherit',
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-            transition: 'background 0.15s',
-          }}
-        >
-          <Icon name="plus" size={14} />
-          {showForm ? 'Cancel' : 'Add'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImport}
+            style={{ display: 'none' }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'var(--color-bg3)',
+              color: 'var(--color-text)',
+              border: 'none',
+              borderRadius: 8,
+              padding: '8px 16px',
+              fontFamily: 'inherit',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+          >
+            <Icon name="download" size={14} />
+            Import
+          </button>
+          <button
+            onClick={handleExport}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'var(--color-bg3)',
+              color: 'var(--color-text)',
+              border: 'none',
+              borderRadius: 8,
+              padding: '8px 16px',
+              fontFamily: 'inherit',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+          >
+            <Icon name="upload" size={14} />
+            Export
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: showForm ? 'var(--color-bg3)' : 'var(--color-accent)',
+              color: showForm ? 'var(--color-text)' : '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '8px 16px',
+              fontFamily: 'inherit',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+          >
+            <Icon name="plus" size={14} />
+            {showForm ? 'Cancel' : 'Add'}
+          </button>
+        </div>
       </div>
 
       {/* Add form */}

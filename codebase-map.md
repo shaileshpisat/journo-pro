@@ -85,7 +85,7 @@ src/
 │   └── AppContext.tsx        # Global state: useReducer + provider + hooks
 ├── components/
 │   ├── ui/
-│   │   ├── Icon.tsx          # SVG icon registry (22 icons)
+│   │   ├── Icon.tsx          # SVG icon registry (24 icons)
 │   │   ├── Chip.tsx          # Pill badge
 │   │   ├── FolderChip.tsx    # Folder path badge
 │   │   ├── SectionHead.tsx   # Section header with count badge
@@ -113,7 +113,7 @@ src/
 │           ├── ParallelView.tsx   # Weekly hourly blocks per timer
 │           ├── SettingsView.tsx
 │           └── PGHView.tsx        # Projects, Goals, Habits dashboard
-          └── RecurringView.tsx  # Month-wise recurring entries with Add button (description, start date, Every N period(s), Income/Expense amount); period uses `every-N-unit` format (e.g. `every-2-weeks`, `every-1-year`)
+          └── RecurringView.tsx  # Month-wise recurring entries with Import, Export, Add buttons (description, start date, Every N period(s), Income/Expense amount); period uses `every-N-unit` format (e.g. `every-2-weeks`, `every-1-year`)
 └── App.tsx                   # View router shell
 ```
 
@@ -535,7 +535,7 @@ SSR-safe generic hook. Reads from localStorage in `useEffect` (avoids hydration 
 ```tsx
 <Icon name="folder" size={16} color="var(--color-accent)" />
 ```
-Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare`, `barChart`, `pin`, `square`, `checkSquare`, `bell`, `refresh`
+Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare`, `barChart`, `pin`, `square`, `checkSquare`, `bell`, `refresh`, `download`, `upload`
 
 #### `Chip.tsx`
 ```tsx
