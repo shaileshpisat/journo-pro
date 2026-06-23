@@ -101,6 +101,7 @@ export type ViewName =
   | 'transactions'
   | 'parallel'
   | 'pgh'
+  | 'recurring'
   | `folder:${string}`
 
 export interface Entry {
@@ -175,7 +176,38 @@ export interface PendingRecurringEntry {
   periodTags: string[]
 }
 
-export const PERIOD_TAGS = ['daily', 'weekdays', 'weekend', 'weekly', 'monthly', 'quarterly'] as const
+export const PERIOD_TAGS = ['daily', 'weekdays', 'weekend', 'weekly', 'monthly', 'quarterly', 'yearly'] as const
+
+export function isPeriodTag(tag: string): boolean {
+  if ((PERIOD_TAGS as readonly string[]).includes(tag)) return true
+  return /^every-\d+-(day|week|month|year)$/.test(tag)
+}
+
+export function parsePeriodConfig(tag: string): { interval: number; unit: 'day' | 'week' | 'month' | 'year' } | null {
+  if (tag === 'daily') return { interval: 1, unit: 'day' }
+  if (tag === 'weekdays' || tag === 'weekend') return { interval: 1, unit: 'day' }
+  if (tag === 'weekly') return { interval: 1, unit: 'week' }
+  if (tag === 'monthly') return { interval: 1, unit: 'month' }
+  if (tag === 'quarterly') return { interval: 3, unit: 'month' }
+  if (tag === 'yearly') return { interval: 1, unit: 'year' }
+  const m = tag.match(/^every-(\d+)-(day|week|month|year)$/)
+  if (m) return { interval: Number(m[1]), unit: m[2] as any }
+  return null
+}
+
+export function formatPeriodLabel(tag: string): string {
+  const cfg = parsePeriodConfig(tag)
+  if (!cfg) return tag
+  if (tag === 'daily') return 'Every 1 day'
+  if (tag === 'weekdays') return 'Weekdays'
+  if (tag === 'weekend') return 'Weekend'
+  if (tag === 'weekly') return 'Every 1 week'
+  if (tag === 'monthly') return 'Every 1 month'
+  if (tag === 'quarterly') return 'Every 3 months'
+  if (tag === 'yearly') return 'Every 1 year'
+  const plural = cfg.interval > 1 ? `${cfg.unit}s` : cfg.unit
+  return `Every ${cfg.interval} ${plural}`
+}
 
 export interface AppState {
   entries: Entry[]
@@ -240,3 +272,4 @@ export type Action =
   | { type: 'ADD_REMINDER'; payload: Reminder }
   | { type: 'UPDATE_REMINDER'; payload: Reminder }
   | { type: 'DELETE_REMINDER'; payload: number }
+  | { type: 'ADVANCE_RECURRING'; payload: number }  // entry id — advance actionDate to next period

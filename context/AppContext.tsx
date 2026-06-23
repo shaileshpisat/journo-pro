@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react'
-import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState, CurrencySymbol, DEFAULT_SEARCH_FILTERS, SearchFilters, Project, Goal, Habit, Reminder, PendingRecurringEntry, PERIOD_TAGS } from '@/lib/types'
+import { AppState, Action, Entry, ViewName, EntryHistory, Comment, TimerState, CurrencySymbol, DEFAULT_SEARCH_FILTERS, SearchFilters, Project, Goal, Habit, Reminder, PendingRecurringEntry, isPeriodTag, parsePeriodConfig } from '@/lib/types'
 import { SEED_ENTRIES } from '@/lib/seedData'
 import { todayLocalStr, toLocalDateStr } from '@/lib/predicates'
 
@@ -257,6 +257,49 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, reminders: state.reminders.map((r) => (r.id === action.payload.id ? action.payload : r)) }
     case 'DELETE_REMINDER':
       return { ...state, reminders: state.reminders.filter((r) => r.id !== action.payload) }
+    case 'ADVANCE_RECURRING': {
+      const entry = state.entries.find((e) => e.id === action.payload)
+      if (!entry) return state
+      const periodTag = entry.tags.find((t) => isPeriodTag(t))
+      if (!periodTag) return state
+      const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`
+      const newDate = advanceDate(entry.actionDate || todayStr, periodTag, todayStr, true)
+      const now = Date.now()
+      const completedEntry: Entry = {
+        id: now,
+        text: entry.text,
+        timestamp: new Date(now).toISOString(),
+        actionDate: null,
+        tags: entry.tags.filter((t) => !isPeriodTag(t)),
+        folder: entry.folder,
+        amount: entry.amount,
+        amountType: entry.amountType,
+        mentions: entry.mentions,
+        timeLogs: [],
+        history: [],
+        isTask: true,
+        isTaskDone: true,
+        completedAt: new Date(now).toISOString(),
+        archived: false,
+        comments: [],
+        pghMapping: null,
+      }
+      return {
+        ...state,
+        entries: [
+          completedEntry,
+          ...state.entries.map((e) =>
+            e.id === action.payload
+              ? { ...e, actionDate: newDate, history: [...(e.history || []), { timestamp: now, field: 'actionDate', oldValue: e.actionDate, newValue: newDate }] }
+              : e
+          ),
+        ],
+        selectedEntry:
+          state.selectedEntry?.id === action.payload
+            ? { ...state.selectedEntry, actionDate: newDate, history: [...(state.selectedEntry.history || []), { timestamp: now, field: 'actionDate', oldValue: state.selectedEntry.actionDate, newValue: newDate }] }
+            : state.selectedEntry,
+      }
+    }
     case 'SET_RELOAD_PENDING':
       return { ...state, reloadPending: action.payload }
     case 'SET_PENDING_RECURRING':
@@ -271,8 +314,8 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         entries: state.entries.map((e) => {
           if (e.id !== entryId) return e
-          const otherTags = e.tags.filter((t): t is string =>
-            (PERIOD_TAGS as readonly string[]).includes(t) && t !== selectedTag
+          const otherTags = e.tags.filter((t) =>
+            isPeriodTag(t) && t !== selectedTag
           )
           const newTags = e.tags.filter((t) => !otherTags.includes(t))
           const newDate = advanceDate(e.actionDate!, selectedTag, todayStr)
@@ -286,8 +329,8 @@ function reducer(state: AppState, action: Action): AppState {
         selectedEntry:
           state.selectedEntry?.id === entryId
             ? { ...state.selectedEntry, ...(() => {
-                const otherTags = (state.selectedEntry!.tags || []).filter((t): t is string =>
-                  (PERIOD_TAGS as readonly string[]).includes(t) && t !== selectedTag
+                const otherTags = (state.selectedEntry!.tags || []).filter((t) =>
+                  isPeriodTag(t) && t !== selectedTag
                 )
                 return {
                   tags: state.selectedEntry!.tags.filter((t) => !otherTags.includes(t)),
@@ -303,21 +346,25 @@ function reducer(state: AppState, action: Action): AppState {
   }
 }
 
-function advanceDate(actionDate: string, tag: string, todayStr: string): string {
+function advanceDate(actionDate: string, tag: string, todayStr: string, forceStep = false): string {
   const date = new Date(actionDate + 'T00:00:00')
   const today = new Date(todayStr + 'T00:00:00')
 
   if (!tag) return todayStr
 
+  const cfg = parsePeriodConfig(tag)
+
   const step = (d: Date) => {
-    switch (tag) {
-      case 'weekly': d.setDate(d.getDate() + 7); break
-      case 'monthly': d.setMonth(d.getMonth() + 1); break
-      case 'quarterly': d.setMonth(d.getMonth() + 3); break
-      default: d.setDate(d.getDate() + 1); break
+    if (!cfg) { d.setDate(d.getDate() + 1); return }
+    switch (cfg.unit) {
+      case 'week': d.setDate(d.getDate() + 7 * cfg.interval); break
+      case 'month': d.setMonth(d.getMonth() + cfg.interval); break
+      case 'year': d.setFullYear(d.getFullYear() + cfg.interval); break
+      default: d.setDate(d.getDate() + cfg.interval); break
     }
   }
 
+  if (forceStep) step(date)
   while (date < today) step(date)
 
   if (tag === 'weekdays') {
@@ -455,9 +502,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!entry.tags.includes('recurring')) continue
       if (!entry.actionDate || entry.actionDate >= todayStr) continue
 
-      const periodTags = entry.tags.filter((t) =>
-        (PERIOD_TAGS as readonly string[]).includes(t as typeof PERIOD_TAGS[number])
-      )
+      const periodTags = entry.tags.filter((t) => isPeriodTag(t))
 
       if (periodTags.length > 1) {
         multiTag.push({ entryId: entry.id, text: entry.text, actionDate: entry.actionDate, periodTags })
@@ -471,9 +516,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     for (const entry of singleTag) {
-      const periodTag = entry.tags.find((t) =>
-        (PERIOD_TAGS as readonly string[]).includes(t as typeof PERIOD_TAGS[number])
-      ) || ''
+      const periodTag = entry.tags.find((t) => isPeriodTag(t)) || ''
       const newDate = advanceDate(entry.actionDate!, periodTag as string, todayStr)
       if (newDate !== entry.actionDate) {
         const now = Date.now()

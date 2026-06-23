@@ -22,6 +22,7 @@ import RecurringTagPicker from '@/components/modals/RecurringTagPicker'
 import Toast from '@/components/ui/Toast'
 import ParallelView from '@/components/views/ParallelView'
 import PGHView from '@/components/views/PGHView'
+import RecurringView from '@/components/views/RecurringView'
 
 export default function App() {
   const { state } = useAppState()
@@ -47,6 +48,7 @@ export default function App() {
     if (view === 'transactions') return <TransactionsView />
     if (view === 'parallel') return <ParallelView />
     if (view === 'pgh') return <PGHView />
+    if (view === 'recurring') return <RecurringView />
     if (view.startsWith('folder:')) return <FolderDetailView key={view} folderName={view.slice(7)} />
     return <HomeView />
   }

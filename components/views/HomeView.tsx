@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { isToday, isOverdue, todayLocalStr, toLocalDateStr } from '@/lib/predicates'
-import { fmtAmt } from '@/lib/formatters'
+import { fmtAmt, fmtDate } from '@/lib/formatters'
 import { EntryHistory, Reminder } from '@/lib/types'
 import JournalInput from '@/components/entry/JournalInput'
 import EntryCard from '@/components/entry/EntryCard'
@@ -35,7 +35,7 @@ export default function HomeView() {
   const activeEntries = entries.filter((e) => !e.archived)
   const todayEntries = activeEntries.filter((e) => isToday(e.timestamp)).slice(0, 6)
   const todayAction = activeEntries.filter(
-    (e) => e.actionDate === todayLocalStr() && !isToday(e.timestamp)
+    (e) => e.actionDate === todayLocalStr()
   )
   const overdue = activeEntries.filter((e) => isOverdue(e) && !e.isTaskDone)
 
@@ -130,6 +130,13 @@ export default function HomeView() {
   const handleTaskToggle = (entry: import('@/lib/types').Entry) => {
     dispatch({ type: 'TOGGLE_TASK_DONE', payload: entry.id })
   }
+
+  const handleAdvanceRecurring = (entry: import('@/lib/types').Entry) => {
+    dispatch({ type: 'ADVANCE_RECURRING', payload: entry.id })
+  }
+
+  const recurringToday = todayAction.filter((e) => e.tags.includes('recurring'))
+  const nonRecurringToday = todayAction.filter((e) => !e.tags.includes('recurring'))
 
   const sidebarW = state.sidebarCollapsed ? 52 : 220
 
@@ -716,7 +723,7 @@ export default function HomeView() {
           >
             <SectionHead title="Action today" count={todayAction.length} />
             <div style={{ display: 'flex', gap: 8, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4 }}>
-              {todayAction.map((e) => (
+              {nonRecurringToday.map((e) => (
                 <div key={e.id} style={{ minWidth: 260, maxWidth: 280, flexShrink: 0 }}>
                   <EntryCard
                     entry={e}
@@ -729,6 +736,56 @@ export default function HomeView() {
                   />
                 </div>
               ))}
+              {recurringToday.map((e) => {
+                const amt = fmtAmt(e.amount, e.amountType, state.currency)
+                return (
+                  <div key={e.id} style={{ minWidth: 260, maxWidth: 280, flexShrink: 0 }}>
+                    <div
+                      onClick={() => dispatch({ type: 'SELECT_ENTRY', payload: e })}
+                      style={{
+                        background: '#fff',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius)',
+                        padding: '8px 12px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <button
+                          onClick={(ev) => { ev.stopPropagation(); handleAdvanceRecurring(e) }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '1px 0 0 0',
+                            color: 'var(--color-text3)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Icon name="square" size={14} />
+                        </button>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, color: 'var(--color-text)', lineHeight: 1.45, margin: 0 }}>
+                            {e.text}
+                          </p>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                            {e.actionDate && (
+                              <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: 'var(--color-amber)' }}>
+                                {fmtDate(e.actionDate)}
+                              </span>
+                            )}
+                            {amt && (
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 500, color: amt.color }}>
+                                {amt.label}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

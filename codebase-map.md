@@ -113,6 +113,7 @@ src/
 │           ├── ParallelView.tsx   # Weekly hourly blocks per timer
 │           ├── SettingsView.tsx
 │           └── PGHView.tsx        # Projects, Goals, Habits dashboard
+          └── RecurringView.tsx  # Month-wise recurring entries with Add button (description, start date, Every N period(s), Income/Expense amount); period uses `every-N-unit` format (e.g. `every-2-weeks`, `every-1-year`)
 └── App.tsx                   # View router shell
 ```
 
@@ -253,7 +254,7 @@ Entry now includes `pghMapping: PGHMapping | null` to link a task to a PGH entit
 ```ts
 type ViewName =
   | 'home' | 'inbox' | 'search' | 'calendar'
-  | 'folders' | 'settings' | 'parallel' | 'pgh'
+  | 'folders' | 'settings' | 'parallel' | 'pgh' | 'recurring'
   | `folder:${string}`   // e.g. "folder:Clients/Acme Corp"
 ```
 
@@ -321,6 +322,7 @@ type ViewName =
 | `ADD_REMINDER` | `Reminder` | Append a new reminder |
 | `UPDATE_REMINDER` | `Reminder` | Replace reminder by id (used for toggle done) |
 | `DELETE_REMINDER` | `number` (id) | Remove a reminder |
+| `ADVANCE_RECURRING` | `number` (entry id) | Advance recurring entry's actionDate to next period; creates a completed Entry for today's occurrence |
 
 ### localStorage sync
 
@@ -328,7 +330,7 @@ type ViewName =
 - On **state change**: `useEffect` watching `state.entries` → saves to `jp_entries`; same for `state.view`, `state.activeTimers`, `state.currency`, and `state.searchFilters`.
 - **Seed data**: If localStorage is empty, `SEED_ENTRIES` is used as initial state.
 - **Auto-reload**: `jp_lastReload` is checked on every mount. If 12+ hours have elapsed, `reloadPending` is set instead of immediately reloading — the app waits for recurring-task resolution first.
-- **Recurring task check**: Runs once after hydration. Entries with `isTask && !isTaskDone && tags.includes('recurring') && past actionDate` are processed. If multiple period tags exist (`daily`/`weekdays`/`weekend`/`weekly`/`monthly`/`quarterly`), they're shown in `RecurringTagPicker`. Single/no-tag entries are auto-advanced (actionDate + period until >= today, or set to today).
+- **Recurring task check**: Runs once after hydration. Entries with `isTask && !isTaskDone && tags.includes('recurring') && past actionDate` are processed. If multiple period tags exist (`daily`/`weekdays`/`weekend`/`weekly`/`monthly`/`quarterly`/`yearly` or `every-N-unit` format), they're shown in `RecurringTagPicker`. Single/no-tag entries are auto-advanced (actionDate + period until >= today, or set to today).
 
 ### Consuming state in components
 
@@ -356,6 +358,7 @@ if (view === 'parallel')  → <ParallelView />
 if (view === 'folders')   → <FoldersView />
 if (view === 'settings')  → <SettingsView />
 if (view === 'pgh')       → <PGHView />
+if (view === 'recurring') → <RecurringView />
 if (view.startsWith('folder:')) → <FolderDetailView key={view} folderName={view.slice(7)} />  // key forces re-mount when navigating between folders
 ```
 
@@ -532,7 +535,7 @@ SSR-safe generic hook. Reads from localStorage in `useEffect` (avoids hydration 
 ```tsx
 <Icon name="folder" size={16} color="var(--color-accent)" />
 ```
-Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare`, `barChart`, `pin`, `square`, `checkSquare`, `bell`
+Available icon names: `home`, `inbox`, `folder`, `calendar`, `search`, `chevronLeft`, `chevronRight`, `chevronDown`, `x`, `plus`, `tag`, `entity`, `amount`, `clock`, `alert`, `edit`, `arrowLeft`, `settings`, `trash`, `check`, `stopwatch`, `pause`, `play`, `messageSquare`, `barChart`, `pin`, `square`, `checkSquare`, `bell`, `refresh`
 
 #### `Chip.tsx`
 ```tsx
@@ -624,7 +627,9 @@ No props. Reads `state.view`, `state.entries`, `state.sidebarCollapsed`.
 - Inbox badge = `entries.filter(e => !e.folder).length`
 - Overdue badge = `entries.filter(e => isOverdue(e)).length`
 - Folder list = root folder names only (first segment of all folder paths)
-- PGH nav item added after Tasks, using `barChart` icon
+- Recurring nav item added after Tasks, using `refresh` icon
+- PGH nav item added after Recurring, using `barChart` icon
+- All period formats extend from simple tag to `every-N-unit` (e.g. `every-2-weeks`, `every-3-months`, `every-1-year`)
 - Settings at bottom always visible
 
 #### `NavItem.tsx`
@@ -684,7 +689,7 @@ Sections (in order):
 3. Today summary pills (entities/folders/tags used today)
 4. **Quick nav** — centered pill buttons for "Action Today" (amber), "Needs Action" (red), and "Reminders" (accent), shown only when items exist; smooth-scroll to the respective section via `ref`
 5. **Today timeline** — `<TodayTimeline>` (entries where `isToday(timestamp)`, max 6) with a toggle switch (accent/gray pill) to show/hide history changes
-6. **Action today** — grid of minimal `<EntryCard>`s where `actionDate === today && !isToday(timestamp)`, amber panel
+6. **Action today** — Recurring entries (amber border) with inline checkbox that dispatches `ADVANCE_RECURRING` (creates a completed entry for today and advances actionDate to next period). Non-recurring entries use standard minimal `<EntryCard>` with `onTaskToggle`. All filtered by `actionDate === today && !isToday(timestamp)`, amber panel.
 7. **Needs action** — horizontal scroll of overdue minimal cards, red panel
 8. **Reminders** — floating panel on the left side of the timeline (width 280px), fixed-position just after the sidebar. Visible only when there are visible reminders (non-done + today-completed). Shows reminders grouped by Today / Older / Future. Each reminder row has a square/checkSquare icon (toggles done on click), the reminder title text (truncated with ellipsis; `title` attribute shows full text on hover; strikethrough + muted color when done today), and for Older/Future the date in `Mon DD` format. An edit icon (pencil, opacity 0.4) on each row opens inline editing for title and date. A "+ Add" button in the header toggles an inline form (text input + date picker + Save button). Completed reminders show with strikethrough until end of day; the next day they vanish. The quick-nav Reminders button shows count of overdue (past-date) reminders only.
 
@@ -905,5 +910,6 @@ style={{ color: 'var(--color-accent)', background: 'var(--color-accent-light)' }
 | `jp_goals` | `Goal[]` JSON | All goals |
 | `jp_habits` | `Habit[]` JSON | All habits |
 | `jp_reminders` | `Reminder[]` JSON | All reminders |
+| `jp_recurring` | — | Period tags stored as simple names (`weekly`) or `every-N-unit` format (`every-2-weeks`, `every-3-months`, `every-1-year`) in entry `tags[]` alongside `recurring` |
 
 Written by `AppContext.tsx` via `useEffect`. Read once on mount via hydration guard (`useRef`). On first visit (empty localStorage), `SEED_ENTRIES` from `src/lib/seedData.ts` is used.
