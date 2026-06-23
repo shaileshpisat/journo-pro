@@ -1,7 +1,7 @@
 # JournoPro — Codebase Map
 
 > Reference document for feature development and bug fixes.
-> Last updated: 2026-06-16 (added Reminders feature — standalone reminders with title, date, checkbox)
+> Last updated: 2026-06-24 (RecurringView export/import changed from JSON to CSV)
 
 ---
 
@@ -113,7 +113,7 @@ src/
 │           ├── ParallelView.tsx   # Weekly hourly blocks per timer
 │           ├── SettingsView.tsx
 │           └── PGHView.tsx        # Projects, Goals, Habits dashboard
-          └── RecurringView.tsx  # Month-wise recurring entries with Import, Export, Add buttons (description, start date, Every N period(s), Income/Expense amount); period uses `every-N-unit` format (e.g. `every-2-weeks`, `every-1-year`)
+          └── RecurringView.tsx  # Tile-grid with 12-month projected occurrences per entry (schedule date, completion, delay); CSV Import/Export/Add header; period uses `every-N-unit` format
 └── App.tsx                   # View router shell
 ```
 

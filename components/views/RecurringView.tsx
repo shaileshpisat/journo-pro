@@ -35,31 +35,93 @@ export default function RecurringView() {
       })
   }, [entries])
 
-  const monthGroups = useMemo(() => {
-    const groups: { label: string; entries: typeof recurringEntries }[] = []
-    const map = new Map<string, typeof recurringEntries>()
+  const findPeriodTag = (tags: string[]) => tags.find((t) => isPeriodTag(t))
+
+  const generateOccurrences = (entry: typeof recurringEntries[number], cfg: ReturnType<typeof parsePeriodConfig>) => {
+    if (!cfg) return []
+    const dates: string[] = []
+    const start = entry.actionDate ? new Date(entry.actionDate + 'T00:00:00') : new Date()
+    const end = new Date(start)
+    end.setFullYear(end.getFullYear() + 1)
+    const cur = new Date(start)
+    while (cur <= end) {
+      dates.push(cur.getFullYear() + '-' + String(cur.getMonth() + 1).padStart(2, '0') + '-' + String(cur.getDate()).padStart(2, '0'))
+      const next = new Date(cur)
+      if (cfg.unit === 'day') next.setDate(next.getDate() + cfg.interval)
+      else if (cfg.unit === 'week') next.setDate(next.getDate() + 7 * cfg.interval)
+      else if (cfg.unit === 'month') next.setMonth(next.getMonth() + cfg.interval)
+      else if (cfg.unit === 'year') next.setFullYear(next.getFullYear() + cfg.interval)
+      cur.setTime(next.getTime())
+    }
+    return dates
+  }
+
+  const monthTiles = useMemo(() => {
+    const tiles: {
+      monthKey: string
+      monthLabel: string
+      entry: typeof recurringEntries[number]
+      dates: string[]
+      occStatus: { date: string; completed: boolean; completedAt: string | null; delay: number | null }[]
+    }[] = []
 
     for (const entry of recurringEntries) {
-      const date = entry.actionDate
-        ? new Date(entry.actionDate + 'T00:00:00')
-        : new Date(entry.timestamp)
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(entry)
+      const period = findPeriodTag(entry.tags)
+      if (!period) continue
+      const cfg = parsePeriodConfig(period)
+      if (!cfg) continue
+
+      const allDates = generateOccurrences(entry, cfg)
+      const completionFromHistory = new Map<string, number>()
+      for (const h of entry.history || []) {
+        if (h.field === 'actionDate' && typeof h.oldValue === 'string') {
+          completionFromHistory.set(h.oldValue, h.timestamp)
+        }
+      }
+
+      const byMonth = new Map<string, string[]>()
+      for (const d of allDates) {
+        const key = d.slice(0, 7)
+        if (!byMonth.has(key)) byMonth.set(key, [])
+        byMonth.get(key)!.push(d)
+      }
+
+      for (const [monthKey, dates] of byMonth) {
+        const occStatus = dates.map((date) => {
+          let completed = false
+          let completedAt: string | null = null
+          let delay: number | null = null
+
+          if (date === entry.actionDate && entry.isTaskDone && entry.completedAt) {
+            completed = true
+            completedAt = entry.completedAt
+          } else if (completionFromHistory.has(date)) {
+            completed = true
+            completedAt = new Date(completionFromHistory.get(date)!).toISOString()
+          }
+
+          if (completed && completedAt) {
+            const sched = new Date(date + 'T00:00:00').getTime()
+            const done = new Date(completedAt).getTime()
+            delay = Math.round((done - sched) / (1000 * 60 * 60 * 24))
+          }
+
+          return { date, completed, completedAt, delay }
+        })
+
+        const mon = new Date(monthKey + '-01')
+        const monthLabel = mon.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+        tiles.push({ monthKey, monthLabel, entry, dates, occStatus })
+      }
     }
 
-    const sortedKeys = Array.from(map.keys()).sort()
-    for (const key of sortedKeys) {
-      const [y, m] = key.split('-')
-      const label = new Date(Number(y), Number(m) - 1).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-      })
-      groups.push({ label, entries: map.get(key)! })
-    }
-
-    return groups
-  }, [recurringEntries])
+    tiles.sort((a, b) => {
+      const mc = a.monthKey.localeCompare(b.monthKey)
+      if (mc !== 0) return mc
+      return a.entry.id - b.entry.id
+    })
+    return tiles
+  }, [recurringEntries, entries])
 
   const buildPeriodTag = () => `every-${interval}-${unit}`
 
@@ -110,14 +172,12 @@ export default function RecurringView() {
     return pair[u] || ['var(--color-text3)', 'var(--color-bg3)']
   }
 
-  const findPeriodTag = (tags: string[]) => tags.find((t) => isPeriodTag(t))
-
   const handleDelete = (id: number) => {
     dispatch({ type: 'DELETE_ENTRY', payload: id })
   }
 
-  const handleToggleDone = (id: number) => {
-    dispatch({ type: 'TOGGLE_TASK_DONE', payload: id })
+  const handleAdvance = (id: number) => {
+    dispatch({ type: 'ADVANCE_RECURRING', payload: id })
   }
 
   const todayStr = new Date().toISOString().split('T')[0]
@@ -166,22 +226,53 @@ export default function RecurringView() {
     setEditingId(null)
   }
 
+  const toCsvField = (val: unknown): string => {
+    const s = val == null ? '' : String(val)
+    if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+      return '"' + s.replace(/"/g, '""') + '"'
+    }
+    return s
+  }
+
+  const parseCsvLine = (line: string): string[] => {
+    const fields: string[] = []
+    let cur = ''
+    let inQuotes = false
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]
+      if (inQuotes) {
+        if (ch === '"') {
+          if (i + 1 < line.length && line[i + 1] === '"') { cur += '"'; i++ }
+          else { inQuotes = false }
+        } else { cur += ch }
+      } else if (ch === ',') { fields.push(cur); cur = '' }
+      else if (ch === '"') { inQuotes = true }
+      else { cur += ch }
+    }
+    fields.push(cur)
+    return fields
+  }
+
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleExport = () => {
-    const exportData = recurringEntries.map((e) => ({
-      text: e.text,
-      actionDate: e.actionDate,
-      tags: e.tags,
-      amount: e.amount,
-      amountType: e.amountType,
-      isTaskDone: e.isTaskDone,
-    }))
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const rows = [['text', 'actionDate', 'tags', 'amount', 'amountType', 'isTaskDone']]
+    for (const e of recurringEntries) {
+      rows.push([
+        e.text,
+        e.actionDate || '',
+        e.tags.join(';'),
+        e.amount != null ? String(e.amount) : '',
+        e.amountType || '',
+        e.isTaskDone ? 'true' : 'false',
+      ])
+    }
+    const csv = rows.map((r) => r.map(toCsvField).join(',')).join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'recurring-export.json'
+    a.download = 'recurring-export.csv'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -192,30 +283,36 @@ export default function RecurringView() {
     const reader = new FileReader()
     reader.onload = (event) => {
       try {
-        const data = JSON.parse(event.target?.result as string)
-        if (!Array.isArray(data)) return
-        data.forEach((item, i) => {
+        const csv = event.target?.result as string
+        const lines = csv.split(/\r?\n/).filter((l) => l.trim())
+        if (lines.length < 2) return
+        for (let i = 1; i < lines.length; i++) {
+          const fields = parseCsvLine(lines[i])
+          const [text, actionDate, tagsStr, amountStr, rawAmountType, isTaskDone] = fields
+          if (!text) continue
+          const tags = tagsStr ? tagsStr.split(';').filter(Boolean) : ['recurring']
+          const amount = amountStr ? parseFloat(amountStr) : null
           const entry = {
             id: Date.now() + i,
-            text: item.text || '',
+            text: text || '',
             timestamp: new Date().toISOString(),
-            actionDate: item.actionDate || null,
-            tags: Array.isArray(item.tags) ? item.tags : ['recurring'],
+            actionDate: actionDate || null,
+            tags,
             folder: null,
-            amount: typeof item.amount === 'number' ? item.amount : null,
-            amountType: item.amountType || null,
+            amount: amount != null && !isNaN(amount) ? amount : null,
+            amountType: (rawAmountType === 'inflow' || rawAmountType === 'outflow' ? rawAmountType : null) as AmountType | null,
             mentions: [],
             timeLogs: [],
             history: [],
             isTask: true,
-            isTaskDone: !!item.isTaskDone,
+            isTaskDone: isTaskDone === 'true',
             completedAt: null,
             archived: false,
             comments: [],
             pghMapping: null,
           }
           dispatch({ type: 'ADD_ENTRY', payload: entry })
-        })
+        }
       } catch {
         /* ignore invalid file */
       }
@@ -235,7 +332,7 @@ export default function RecurringView() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".json"
+            accept=".csv"
             onChange={handleImport}
             style={{ display: 'none' }}
           />
@@ -453,282 +550,216 @@ export default function RecurringView() {
         </div>
       )}
 
-      {/* Month groups */}
-      {monthGroups.length === 0 && (
+      {/* Tiles */}
+      {recurringEntries.length === 0 && (
         <p style={{ color: 'var(--color-text3)', fontSize: 14, textAlign: 'center', marginTop: 60 }}>
           No recurring entries yet. Click "Add" to create one.
         </p>
       )}
 
-      {monthGroups.map((group) => (
-        <div key={group.label} style={{ marginBottom: 32 }}>
-          <h2
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--color-text3)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              margin: '0 0 12px',
-            }}
-          >
-            {group.label}
-          </h2>
-          {group.entries.map((entry) => {
+      {monthTiles.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {monthTiles.map((tile) => {
+            const entry = tile.entry
             const period = findPeriodTag(entry.tags)
             const [chipColor, chipBg] = period ? chipStyle(period) : ['var(--color-text3)', 'var(--color-bg3)']
             const isEditing = editingId === entry.id
             const amt = fmtAmt(entry.amount, entry.amountType, currency)
-            return (
-              <div
-                key={entry.id}
-                style={{
+
+            if (isEditing) {
+              return (
+                <div key={entry.id + '-' + tile.monthKey} style={{
+                  border: '1px solid var(--color-accent)',
+                  borderRadius: 12,
+                  padding: 16,
+                  background: 'var(--color-bg2)',
                   display: 'flex',
-                  alignItems: isEditing ? 'flex-start' : 'center',
-                  gap: 12,
-                  padding: isEditing ? 16 : '10px 14px',
-                  borderRadius: 10,
-                  border: `1px solid ${isEditing ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                  marginBottom: 8,
-                  background: isEditing ? 'var(--color-bg2)' : 'var(--color-bg)',
-                  flexDirection: isEditing ? 'column' : 'row',
-                }}
-              >
-                {isEditing ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-                    <textarea
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                      rows={2}
-                      style={{
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 8,
-                        padding: '10px 12px',
-                        fontFamily: 'inherit',
-                        fontSize: 14,
-                        outline: 'none',
-                        resize: 'vertical',
-                        background: 'var(--color-bg)',
-                      }}
-                    />
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <input
-                        type="date"
-                        value={editActionDate}
-                        min={todayStr}
-                        onChange={(e) => setEditActionDate(e.target.value)}
-                        style={{
-                          border: '1px solid var(--color-border)',
-                          borderRadius: 6,
-                          padding: '6px 10px',
-                          fontFamily: 'inherit',
-                          fontSize: 13,
-                          outline: 'none',
-                          background: 'var(--color-bg)',
-                        }}
-                      />
-                      <span style={{ fontSize: 12, color: 'var(--color-text3)', fontWeight: 500 }}>Every</span>
-                      <input
-                        type="number"
-                        min={1}
-                        value={editInterval}
-                        onChange={(e) => setEditInterval(Math.max(1, Number(e.target.value) || 1))}
-                        style={{
-                          border: '1px solid var(--color-border)',
-                          borderRadius: 6,
-                          padding: '6px 8px',
-                          fontFamily: 'inherit',
-                          fontSize: 13,
-                          outline: 'none',
-                          background: 'var(--color-bg)',
-                          width: 52,
-                          textAlign: 'center',
-                        }}
-                      />
-                      <select
-                        value={editUnit}
-                        onChange={(e) => setEditUnit(e.target.value)}
-                        style={{
-                          border: '1px solid var(--color-border)',
-                          borderRadius: 6,
-                          padding: '6px 10px',
-                          fontFamily: 'inherit',
-                          fontSize: 13,
-                          outline: 'none',
-                          background: 'var(--color-bg)',
-                        }}
-                      >
-                        {Object.entries(UNIT_LABELS).map(([k, l]) => (
-                          <option key={k} value={k}>{l}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        step="any"
-                        min={0}
-                        value={editAmount}
-                        onChange={(e) => setEditAmount(e.target.value)}
-                        placeholder="0.00"
-                        style={{
-                          border: '1px solid var(--color-border)',
-                          borderRadius: 6,
-                          padding: '6px 10px',
-                          fontFamily: 'inherit',
-                          fontSize: 13,
-                          outline: 'none',
-                          background: 'var(--color-bg)',
-                          width: 80,
-                        }}
-                      />
-                      <button
-                        onClick={() => setEditAmountType(editAmountType === 'inflow' ? 'outflow' : 'inflow')}
-                        style={{
-                          background: editAmountType === 'inflow' ? 'var(--color-green-light)' : 'var(--color-red-light)',
-                          color: editAmountType === 'inflow' ? 'var(--color-green)' : 'var(--color-red)',
-                          border: `1px solid ${editAmountType === 'inflow' ? 'var(--color-green)' : 'var(--color-red)'}`,
-                          borderRadius: 6,
-                          padding: '6px 10px',
-                          fontFamily: 'inherit',
-                          fontSize: 12,
-                          fontWeight: 500,
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {editAmountType === 'inflow' ? 'Income' : 'Expense'}
-                      </button>
+                  flexDirection: 'column',
+                  gap: 10,
+                }}>
+                  <textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={2} style={{
+                    border: '1px solid var(--color-border)', borderRadius: 8, padding: '10px 12px',
+                    fontFamily: 'inherit', fontSize: 14, outline: 'none', resize: 'vertical', background: 'var(--color-bg)',
+                  }} />
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input type="date" value={editActionDate} min={todayStr} onChange={(e) => setEditActionDate(e.target.value)} style={{
+                      border: '1px solid var(--color-border)', borderRadius: 6, padding: '6px 10px',
+                      fontFamily: 'inherit', fontSize: 13, outline: 'none', background: 'var(--color-bg)',
+                    }} />
+                    <span style={{ fontSize: 12, color: 'var(--color-text3)', fontWeight: 500 }}>Every</span>
+                    <input type="number" min={1} value={editInterval}
+                      onChange={(e) => setEditInterval(Math.max(1, Number(e.target.value) || 1))} style={{
+                        border: '1px solid var(--color-border)', borderRadius: 6, padding: '6px 8px',
+                        fontFamily: 'inherit', fontSize: 13, outline: 'none', background: 'var(--color-bg)',
+                        width: 52, textAlign: 'center',
+                      }} />
+                    <select value={editUnit} onChange={(e) => setEditUnit(e.target.value)} style={{
+                      border: '1px solid var(--color-border)', borderRadius: 6, padding: '6px 10px',
+                      fontFamily: 'inherit', fontSize: 13, outline: 'none', background: 'var(--color-bg)',
+                    }}>
+                      {Object.entries(UNIT_LABELS).map(([k, l]) => (<option key={k} value={k}>{l}</option>))}
+                    </select>
+                    <input type="number" step="any" min={0} value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)} placeholder="0.00" style={{
+                        border: '1px solid var(--color-border)', borderRadius: 6, padding: '6px 10px',
+                        fontFamily: 'inherit', fontSize: 13, outline: 'none', background: 'var(--color-bg)', width: 80,
+                      }} />
+                    <button onClick={() => setEditAmountType(editAmountType === 'inflow' ? 'outflow' : 'inflow')} style={{
+                      background: editAmountType === 'inflow' ? 'var(--color-green-light)' : 'var(--color-red-light)',
+                      color: editAmountType === 'inflow' ? 'var(--color-green)' : 'var(--color-red)',
+                      border: `1px solid ${editAmountType === 'inflow' ? 'var(--color-green)' : 'var(--color-red)'}`,
+                      borderRadius: 6, padding: '6px 10px', fontFamily: 'inherit', fontSize: 12,
+                      fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}>
+                      {editAmountType === 'inflow' ? 'Income' : 'Expense'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    <button onClick={handleSaveEdit} style={{
+                      background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: 6,
+                      padding: '6px 16px', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                    }}>Save</button>
+                    <button onClick={cancelEditing} style={{
+                      background: 'var(--color-bg3)', color: 'var(--color-text)', border: 'none',
+                      borderRadius: 6, padding: '6px 16px', fontFamily: 'inherit', fontSize: 13, cursor: 'pointer',
+                    }}>Cancel</button>
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <div key={entry.id + '-' + tile.monthKey} style={{
+                border: '1px solid var(--color-border)',
+                borderRadius: 12,
+                background: 'var(--color-bg)',
+                display: 'flex',
+                flexDirection: 'column',
+              }}>
+                {/* Tile header */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '12px 14px 0',
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={entry.text}>
+                      {entry.text}
                     </div>
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={handleSaveEdit}
-                        style={{
-                          background: 'var(--color-accent)',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 6,
-                          padding: '6px 16px',
-                          fontFamily: 'inherit',
-                          fontSize: 13,
-                          fontWeight: 500,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={cancelEditing}
-                        style={{
-                          background: 'var(--color-bg3)',
-                          color: 'var(--color-text)',
-                          border: 'none',
-                          borderRadius: 6,
-                          padding: '6px 16px',
-                          fontFamily: 'inherit',
-                          fontSize: 13,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Cancel
-                      </button>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: chipColor, background: chipBg, padding: '2px 8px', borderRadius: 4, letterSpacing: '0.03em' }}>
+                        {period ? formatPeriodLabel(period) : ''}
+                      </span>
+                      {amt && (
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: amt.color }}>
+                          {amt.label}
+                        </span>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => handleToggleDone(entry.id)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: 0,
-                        display: 'flex',
-                        color: entry.isTaskDone ? 'var(--color-green)' : 'var(--color-text3)',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Icon name={entry.isTaskDone ? 'checkSquare' : 'square'} size={16} />
-                    </button>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span
-                        style={{
-                          fontSize: 14,
-                          color: entry.isTaskDone ? 'var(--color-text3)' : 'var(--color-text)',
-                          textDecoration: entry.isTaskDone ? 'line-through' : 'none',
-                          display: 'block',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                        title={entry.text}
-                      >
-                        {entry.text}
-                      </span>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}>
-                        {entry.actionDate && (
-                          <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>
-                            {new Date(entry.actionDate + 'T00:00:00').toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}
-                          </span>
-                        )}
-                        {amt && (
-                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: amt.color }}>
-                            {amt.label}
-                          </span>
-                        )}
-                        {period && (
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 500,
-                              color: chipColor,
-                              background: chipBg,
-                              padding: '2px 8px',
-                              borderRadius: 4,
-                              letterSpacing: '0.03em',
-                            }}
-                          >
-                            {formatPeriodLabel(period)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => startEditing(entry)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: 4,
-                        color: 'var(--color-text3)',
-                        opacity: 0.4,
-                        flexShrink: 0,
-                      }}
-                    >
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <button onClick={() => startEditing(entry)} style={{
+                      background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                      color: 'var(--color-text3)', opacity: 0.4, flexShrink: 0,
+                    }}>
                       <Icon name="edit" size={13} />
                     </button>
-                    <button
-                      onClick={() => handleDelete(entry.id)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: 4,
-                        color: 'var(--color-text3)',
-                        opacity: 0.5,
-                        flexShrink: 0,
-                      }}
-                    >
+                    <button onClick={() => handleDelete(entry.id)} style={{
+                      background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                      color: 'var(--color-text3)', opacity: 0.5, flexShrink: 0,
+                    }}>
                       <Icon name="trash" size={14} />
                     </button>
-                  </>
-                )}
+                  </div>
+                </div>
+
+                {/* Month label */}
+                <div style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--color-accent)',
+                  padding: '10px 14px 6px',
+                  letterSpacing: '0.02em',
+                }}>
+                  {tile.monthLabel}
+                </div>
+
+                {/* Occurrence rows */}
+                <div style={{ padding: '0 14px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {tile.occStatus.map((occ) => {
+                    const isCurrent = occ.date === entry.actionDate
+                    const dt = new Date(occ.date + 'T00:00:00')
+                    const dayName = dt.toLocaleDateString('en-US', { weekday: 'short' })
+
+                    return (
+                      <div key={occ.date} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '6px 8px',
+                        borderRadius: 8,
+                        background: isCurrent ? 'var(--color-bg2)' : 'transparent',
+                        border: isCurrent ? '1px solid var(--color-accent)' : '1px solid transparent',
+                      }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: 'var(--color-text)',
+                            fontFamily: "'DM Mono', monospace",
+                            minWidth: 24,
+                          }}>
+                            {dayName}
+                          </span>
+                          <span style={{
+                            fontSize: 12,
+                            color: 'var(--color-text2)',
+                            fontFamily: "'DM Mono', monospace",
+                          }}>
+                            {dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
+
+                        {occ.completed ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 11, color: 'var(--color-green)' }}>
+                              ✓
+                            </span>
+                            {occ.delay !== null && (
+                              <span style={{
+                                fontSize: 11,
+                                color: occ.delay <= 0 ? 'var(--color-green)' : 'var(--color-red)',
+                                fontFamily: "'DM Mono', monospace",
+                              }}>
+                                {occ.delay <= 0 ? 'on time' : `+${occ.delay}d`}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          isCurrent ? (
+                            <button onClick={() => handleAdvance(entry.id)} style={{
+                              display: 'flex', alignItems: 'center', gap: 4,
+                              background: 'var(--color-accent)', color: '#fff', border: 'none',
+                              borderRadius: 6, padding: '4px 10px', fontFamily: 'inherit',
+                              fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                            }}>
+                              <Icon name="check" size={12} />
+                              Done
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: 11, color: 'var(--color-text3)' }}>—</span>
+                          )
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )
           })}
         </div>
-      ))}
+      )}
     </div>
   )
 }
