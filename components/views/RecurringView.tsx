@@ -279,7 +279,10 @@ export default function RecurringView() {
           const fields = parseCsvLine(lines[i])
           const [text, actionDate, tagsStr, amountStr, rawAmountType, isTaskDone] = fields
           if (!text) continue
-          const tags = tagsStr ? tagsStr.split(';').filter(Boolean) : ['recurring']
+          let tags = tagsStr ? tagsStr.split(';').filter(Boolean) : ['recurring']
+          if (tags.includes('recurring') && !tags.some((t) => isPeriodTag(t))) {
+            tags = [...tags, 'every-1-week']
+          }
           const amount = amountStr ? parseFloat(amountStr) : null
           const existing = existingByText.get(text.toLowerCase())
           if (existing) {
@@ -630,24 +633,31 @@ export default function RecurringView() {
               <div key={entry.id} style={{
                 border: '1px solid var(--color-border)', borderRadius: 12, background: 'var(--color-bg)',
               }}>
-                {/* Header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px 0' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
-                      {entry.text}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
-                      <span style={{ fontSize: 11, fontWeight: 500, color: chipColor, background: chipBg, padding: '2px 8px', borderRadius: 4 }}>
-                        {period ? formatPeriodLabel(period) : ''}
-                      </span>
-                      {amt && (
-                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: amt.color }}>
-                          {amt.label}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                {/* Header: title, period, amount, tags, edit/delete */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px 0',
+                  flexWrap: 'wrap',
+                }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
+                    {entry.text}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: chipColor, background: chipBg, padding: '2px 8px', borderRadius: 4 }}>
+                    {period ? formatPeriodLabel(period) : ''}
+                  </span>
+                  {amt && (
+                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: amt.color }}>
+                      {amt.label}
+                    </span>
+                  )}
+                  {entry.tags.filter((t) => t !== 'recurring' && !isPeriodTag(t)).map((t) => (
+                    <span key={t} style={{
+                      fontSize: 10, fontWeight: 500, color: 'var(--color-text3)',
+                      background: 'var(--color-bg3)', padding: '2px 7px', borderRadius: 4,
+                    }}>
+                      {t}
+                    </span>
+                  ))}
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
                     <button onClick={() => startEditing(entry)} style={{
                       background: 'none', border: 'none', cursor: 'pointer', padding: 4,
                       color: 'var(--color-text3)', opacity: 0.4,
