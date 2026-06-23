@@ -37,8 +37,19 @@ export default function RecurringView() {
 
   const findPeriodTag = (tags: string[]) => tags.find((t) => isPeriodTag(t))
 
+  const stepDate = (d: Date, dir: 1 | -1, cfg: ReturnType<typeof parsePeriodConfig>) => {
+    const n = dir * cfg!.interval
+    if (cfg!.unit === 'day') d.setDate(d.getDate() + n)
+    else if (cfg!.unit === 'week') d.setDate(d.getDate() + 7 * n)
+    else if (cfg!.unit === 'month') d.setMonth(d.getMonth() + n)
+    else if (cfg!.unit === 'year') d.setFullYear(d.getFullYear() + n)
+  }
+
+  const fmtYMD = (d: Date) =>
+    d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+
   const nextOccurrences = useMemo(() => {
-    type Occ = { date: string; completed: boolean; completedAt: string | null; delay: number | null }
+    type Occ = { date: string; completed: boolean; completedAt: string | null; delay: number | null; isCurrent: boolean }
     const result: { entry: typeof recurringEntries[number]; occs: Occ[] }[] = []
 
     for (const entry of recurringEntries) {
@@ -47,41 +58,47 @@ export default function RecurringView() {
       const cfg = parsePeriodConfig(period)
       if (!cfg) continue
 
-      const completionFromHistory = new Map<string, number>()
+      const completedMap = new Map<string, number>()
       for (const h of entry.history || []) {
-        if (h.field === 'actionDate' && typeof h.oldValue === 'string') {
-          completionFromHistory.set(h.oldValue, h.timestamp)
+        if (h.field === 'actionDate' && typeof h.oldValue === 'string')
+          completedMap.set(h.oldValue, h.timestamp)
+      }
+      if (entry.isTaskDone && entry.completedAt && entry.actionDate)
+        completedMap.set(entry.actionDate, new Date(entry.completedAt).getTime())
+
+      const cur = entry.actionDate ? new Date(entry.actionDate + 'T00:00:00') : new Date()
+
+      // Walk back up to 4 steps to collect up to 3 completed past dates
+      const past: Occ[] = []
+      const back = new Date(cur)
+      for (let i = 0; i < 4 && past.length < 3; i++) {
+        stepDate(back, -1, cfg)
+        const ds = fmtYMD(back)
+        if (completedMap.has(ds)) {
+          const ts = completedMap.get(ds)!
+          const completedAt = new Date(ts).toISOString()
+          past.unshift({
+            date: ds, completed: true, completedAt,
+            delay: Math.round((ts - new Date(ds + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24)),
+            isCurrent: false,
+          })
         }
       }
 
-      const occs: Occ[] = []
-      const cur = entry.actionDate ? new Date(entry.actionDate + 'T00:00:00') : new Date()
-      for (let i = 0; i < 5; i++) {
-        const date = cur.getFullYear() + '-' + String(cur.getMonth() + 1).padStart(2, '0') + '-' + String(cur.getDate()).padStart(2, '0')
-        let completed = false
-        let completedAt: string | null = null
-        let delay: number | null = null
-
-        if (date === entry.actionDate && entry.isTaskDone && entry.completedAt) {
-          completed = true
-          completedAt = entry.completedAt
-        } else if (completionFromHistory.has(date)) {
-          completed = true
-          completedAt = new Date(completionFromHistory.get(date)!).toISOString()
-        }
-
-        if (completed && completedAt) {
-          delay = Math.round((new Date(completedAt).getTime() - new Date(date + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24))
-        }
-
-        occs.push({ date, completed, completedAt, delay })
-
-        const next = new Date(cur)
-        if (cfg.unit === 'day') next.setDate(next.getDate() + cfg.interval)
-        else if (cfg.unit === 'week') next.setDate(next.getDate() + 7 * cfg.interval)
-        else if (cfg.unit === 'month') next.setMonth(next.getMonth() + cfg.interval)
-        else if (cfg.unit === 'year') next.setFullYear(next.getFullYear() + cfg.interval)
-        cur.setTime(next.getTime())
+      // Walk forward to fill remaining slots
+      const occs: Occ[] = [...past]
+      const fwd = new Date(cur)
+      if (completedMap.has(entry.actionDate!)) stepDate(fwd, 1, cfg)
+      for (let i = 0; i < 10 - past.length; i++) {
+        const ds = fmtYMD(fwd)
+        const isDone = completedMap.has(ds)
+        occs.push({
+          date: ds, completed: isDone,
+          completedAt: isDone ? new Date(completedMap.get(ds)!).toISOString() : null,
+          delay: isDone ? Math.round((completedMap.get(ds)! - new Date(ds + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24)) : null,
+          isCurrent: ds === entry.actionDate && !isDone,
+        })
+        stepDate(fwd, 1, cfg)
       }
 
       result.push({ entry, occs })
@@ -649,7 +666,6 @@ export default function RecurringView() {
                 {/* Occurrence columns */}
                 <div style={{ padding: '16px 14px 14px', display: 'flex', gap: 0 }}>
                   {occs.map((occ, i) => {
-                    const isCurrent = occ.date === entry.actionDate
                     const dt = new Date(occ.date + 'T00:00:00')
                     const shortDate = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                     const completedDate = occ.completedAt
@@ -667,14 +683,14 @@ export default function RecurringView() {
                         borderRight: i < occs.length - 1 ? '1px solid var(--color-border)' : 'none',
                       }}>
                         <button
-                          onClick={() => !occ.completed && isCurrent && handleAdvance(entry.id)}
+                          onClick={() => !occ.completed && occ.isCurrent && handleAdvance(entry.id)}
                           style={{
                             background: 'none',
                             border: 'none',
-                            cursor: occ.completed || !isCurrent ? 'default' : 'pointer',
+                            cursor: occ.completed || !occ.isCurrent ? 'default' : 'pointer',
                             padding: 0,
-                            color: occ.completed ? 'var(--color-green)' : isCurrent ? 'var(--color-text)' : 'var(--color-text3)',
-                            opacity: occ.completed ? 1 : isCurrent ? 1 : 0.3,
+                            color: occ.completed ? 'var(--color-green)' : occ.isCurrent ? 'var(--color-text)' : 'var(--color-text3)',
+                            opacity: occ.completed ? 1 : occ.isCurrent ? 1 : 0.3,
                           }}
                         >
                           <Icon name={occ.completed ? 'checkSquare' : 'square'} size={16} />

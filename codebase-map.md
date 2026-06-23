@@ -113,7 +113,7 @@ src/
 │           ├── ParallelView.tsx   # Weekly hourly blocks per timer
 │           ├── SettingsView.tsx
 │           └── PGHView.tsx        # Projects, Goals, Habits dashboard
-          └── RecurringView.tsx  # Per-entry tiles showing next 5 occurrence columns (checkbox, date, completed date); Import/Export/Add header; period uses `every-N-unit` format
+          └── RecurringView.tsx  # Per-entry tiles showing 10 occurrence columns (last 3 completed + 7 pending); checkbox, date, completed date; Import/Export/Add header; period uses `every-N-unit` format
 └── App.tsx                   # View router shell
 ```
 
