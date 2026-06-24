@@ -7,6 +7,7 @@ import { fmtAmt } from '@/lib/formatters'
 import Icon from '@/components/ui/Icon'
 
 const UNIT_LABELS: Record<string, string> = {
+  day: 'day(s)',
   week: 'week(s)',
   month: 'month(s)',
   year: 'year(s)',

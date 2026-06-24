@@ -1,7 +1,7 @@
 # JournoPro — Codebase Map
 
 > Reference document for feature development and bug fixes.
-> Last updated: 2026-06-24 (RecurringView export/import changed from JSON to CSV)
+> Last updated: 2026-06-24 (RecurringView: added day(s) period unit to form dropdown)
 
 ---
 
