@@ -281,10 +281,12 @@ export default function RecurringView() {
           const [text, actionDate, tagsStr, amountStr, rawAmountType, isTaskDone] = fields
           if (!text) continue
           let tags = tagsStr ? tagsStr.split(';').filter(Boolean) : ['recurring']
-          if (tags.includes('recurring') && !tags.some((t) => isPeriodTag(t))) {
-            tags = [...tags, 'every-1-week']
+          if (!tags.includes('recurring')) tags.unshift('recurring')
+          if (!tags.some((t) => isPeriodTag(t))) {
+            tags.push('every-1-week')
           }
           const amount = amountStr ? parseFloat(amountStr) : null
+          const validDate = actionDate && /^\d{4}-\d{2}-\d{2}$/.test(actionDate) ? actionDate : ''
           const existing = existingByText.get(text.toLowerCase())
           if (existing) {
             dispatch({
@@ -292,7 +294,7 @@ export default function RecurringView() {
               payload: {
                 ...existing,
                 text: text.trim(),
-                actionDate: actionDate || existing.actionDate,
+                actionDate: validDate || existing.actionDate,
                 tags,
                 amount: amount != null && !isNaN(amount) ? amount : existing.amount,
                 amountType: (rawAmountType === 'inflow' || rawAmountType === 'outflow' ? rawAmountType : existing.amountType) as AmountType | null,
@@ -305,7 +307,7 @@ export default function RecurringView() {
               id: Date.now() + i,
               text: text.trim(),
               timestamp: new Date().toISOString(),
-              actionDate: actionDate || null,
+              actionDate: validDate || todayStr,
               tags,
               folder: null,
               amount: amount != null && !isNaN(amount) ? amount : null,
