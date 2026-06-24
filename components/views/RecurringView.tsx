@@ -175,6 +175,11 @@ export default function RecurringView() {
   const [editUnit, setEditUnit] = useState('week')
   const [editAmount, setEditAmount] = useState('')
   const [editAmountType, setEditAmountType] = useState<AmountType>('inflow')
+  const [editOtherTags, setEditOtherTags] = useState<string[]>([])
+  const [editTagInput, setEditTagInput] = useState('')
+  const [editCommentInput, setEditCommentInput] = useState('')
+
+  const allMasterTags = useMemo(() => [...new Set(entries.flatMap((e) => e.tags))], [entries])
 
   const startEditing = (entry: typeof recurringEntries[number]) => {
     setEditingId(entry.id)
@@ -185,6 +190,9 @@ export default function RecurringView() {
     setEditUnit(cfg?.unit || 'week')
     setEditAmount(entry.amount ? String(entry.amount) : '')
     setEditAmountType(entry.amountType || 'inflow')
+    setEditOtherTags(entry.tags.filter((t) => !isPeriodTag(t) && t !== 'recurring'))
+    setEditTagInput('')
+    setEditCommentInput('')
   }
 
   const handleSaveEdit = () => {
@@ -193,14 +201,13 @@ export default function RecurringView() {
     const entry = entries.find((e) => e.id === editingId)
     if (!entry) return
     const amt = editAmount ? parseFloat(editAmount) : null
-    const otherTags = entry.tags.filter((t) => !isPeriodTag(t) && t !== 'recurring')
     dispatch({
       type: 'UPDATE_ENTRY',
       payload: {
         ...entry,
         text: editText.trim(),
         actionDate: editActionDate || entry.actionDate,
-        tags: ['recurring', `every-${editInterval}-${editUnit}`, ...otherTags],
+        tags: ['recurring', `every-${editInterval}-${editUnit}`, ...editOtherTags],
         amount: amt,
         amountType: amt ? editAmountType : null,
       },
@@ -618,7 +625,135 @@ export default function RecurringView() {
                       {editAmountType === 'inflow' ? 'Income' : 'Expense'}
                     </button>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+
+                  {/* Tags */}
+                  <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Icon name="tag" size={11} />
+                      Tags
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                      {editOtherTags.map((t) => (
+                        <span key={t} style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          background: 'var(--color-bg2)', border: '1px solid var(--color-border)',
+                          borderRadius: 99, padding: '2px 8px', fontSize: 12, color: 'var(--color-text2)',
+                        }}>
+                          #{t}
+                          <button onClick={() => setEditOtherTags(editOtherTags.filter((x) => x !== t))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'var(--color-text3)' }}>
+                            <Icon name="x" size={10} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        value={editTagInput}
+                        onChange={(e) => setEditTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && editTagInput.trim()) {
+                            e.preventDefault()
+                            const tag = editTagInput.replace(/^#/, '').trim()
+                            if (tag && !editOtherTags.includes(tag)) setEditOtherTags([...editOtherTags, tag])
+                            setEditTagInput('')
+                          }
+                        }}
+                        placeholder="Add tag and press Enter..."
+                        style={{
+                          border: '1px solid var(--color-border)', borderRadius: 6,
+                          padding: '6px 10px', fontFamily: 'inherit', fontSize: 13,
+                          outline: 'none', background: 'var(--color-bg)', width: '100%', boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Comments */}
+                  <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Icon name="messageSquare" size={11} />
+                      Comments
+                      {(entry.comments?.length ?? 0) > 0 && (
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--color-text3)' }}>
+                          ({entry.comments.length})
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <textarea
+                          value={editCommentInput}
+                          onChange={(e) => setEditCommentInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && editCommentInput.trim()) {
+                              e.preventDefault()
+                              dispatch({ type: 'ADD_COMMENT', payload: { entryId: entry.id, comment: { id: Date.now(), text: editCommentInput.trim(), timestamp: new Date().toISOString() } } })
+                              setEditCommentInput('')
+                            }
+                          }}
+                          placeholder="Add a comment... (Cmd+Enter to submit)"
+                          style={{
+                            border: '1px solid var(--color-border)', borderRadius: 6,
+                            padding: '6px 10px', fontFamily: 'inherit', fontSize: 13,
+                            outline: 'none', background: 'var(--color-bg)', flex: 1, resize: 'none',
+                          }}
+                          rows={2}
+                        />
+                        <button
+                          onClick={() => {
+                            if (editCommentInput.trim()) {
+                              dispatch({ type: 'ADD_COMMENT', payload: { entryId: entry.id, comment: { id: Date.now(), text: editCommentInput.trim(), timestamp: new Date().toISOString() } } })
+                              setEditCommentInput('')
+                            }
+                          }}
+                          disabled={!editCommentInput.trim()}
+                          style={{
+                            background: editCommentInput.trim() ? 'var(--color-accent)' : 'var(--color-bg3)',
+                            color: editCommentInput.trim() ? '#fff' : 'var(--color-text3)',
+                            border: 'none', borderRadius: 6, padding: '4px 12px',
+                            fontFamily: 'inherit', fontSize: 12,
+                            cursor: editCommentInput.trim() ? 'pointer' : 'default',
+                          }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                      {entry.comments && entry.comments.length > 0 ? (
+                        [...entry.comments].sort((a, b) => {
+                          if (a.isPinned && !b.isPinned) return -1
+                          if (!a.isPinned && b.isPinned) return 1
+                          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                        }).map((c) => (
+                          <div key={c.id} style={{
+                            padding: '6px 8px',
+                            background: c.isPinned ? 'var(--color-accent-light)' : 'var(--color-bg)',
+                            borderRadius: 6,
+                            borderLeft: c.isPinned ? '3px solid var(--color-accent)' : '3px solid transparent',
+                          }}>
+                            <div style={{ fontSize: 12, color: 'var(--color-text)', whiteSpace: 'pre-wrap', marginBottom: 2 }}>
+                              {c.text}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {c.isPinned && (
+                                <span style={{ fontSize: 9, color: 'var(--color-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                  Pinned
+                                </span>
+                              )}
+                              <span style={{ fontSize: 10, color: 'var(--color-text3)', fontFamily: "'DM Mono', monospace" }}>
+                                {new Date(c.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ fontSize: 12, color: 'var(--color-text3)', lineHeight: 1.4 }}>
+                          No comments yet.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: 10 }}>
                     <button onClick={handleSaveEdit} style={{
                       background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: 6,
                       padding: '6px 16px', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer',
