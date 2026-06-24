@@ -24,6 +24,7 @@ export default function RecurringView() {
   const [unit, setUnit] = useState('week')
   const [amount, setAmount] = useState('')
   const [amountType, setAmountType] = useState<AmountType>('inflow')
+  const [importResult, setImportResult] = useState<{ count: number; warnings: string[] } | null>(null)
 
   const recurringEntries = useMemo(() => {
     return entries
@@ -48,6 +49,17 @@ export default function RecurringView() {
 
   const fmtYMD = (d: Date) =>
     d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+
+  const parseImportDate = (raw: string): string => {
+    if (!raw) return ''
+    const s = raw.trim()
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+    let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+    if (m) return `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`
+    m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/)
+    if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
+    return ''
+  }
 
   const nextOccurrences = useMemo(() => {
     type Occ = { date: string; completed: boolean; completedAt: string | null; delay: number | null; isCurrent: boolean }
@@ -273,27 +285,39 @@ export default function RecurringView() {
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setImportResult(null)
     const reader = new FileReader()
     reader.onload = (event) => {
-      try {
-        const csv = event.target?.result as string
-        const lines = csv.split(/\r?\n/).filter((l) => l.trim())
-        if (lines.length < 2) return
-        const existingByText = new Map<string, typeof recurringEntries[number]>()
-        for (const entry of recurringEntries) {
-          existingByText.set(entry.text.toLowerCase(), entry)
-        }
-        for (let i = 1; i < lines.length; i++) {
+      const csv = event.target?.result as string
+      const lines = csv.split(/\r?\n/).filter((l) => l.trim())
+      if (lines.length < 2) {
+        setImportResult({ count: 0, warnings: ['No data rows found in CSV.'] })
+        return
+      }
+      const existingByText = new Map<string, typeof recurringEntries[number]>()
+      for (const entry of recurringEntries) {
+        existingByText.set(entry.text.toLowerCase(), entry)
+      }
+      const warnings: string[] = []
+      let count = 0
+      for (let i = 1; i < lines.length; i++) {
+        try {
           const fields = parseCsvLine(lines[i])
           const [text, actionDate, tagsStr, amountStr, rawAmountType, isTaskDone] = fields
-          if (!text) continue
+          if (!text) {
+            warnings.push(`Row ${i + 1}: skipped (empty task description)`)
+            continue
+          }
           let tags = tagsStr ? tagsStr.split(';').filter(Boolean) : ['recurring']
           if (!tags.includes('recurring')) tags.unshift('recurring')
           if (!tags.some((t) => isPeriodTag(t))) {
             tags.push('every-1-week')
           }
           const amount = amountStr ? parseFloat(amountStr) : null
-          const validDate = actionDate && /^\d{4}-\d{2}-\d{2}$/.test(actionDate) ? actionDate : ''
+          const validDate = parseImportDate(actionDate || '')
+          if (actionDate && !validDate) {
+            warnings.push(`Row ${i + 1}: date "${actionDate.trim()}" not recognized, used existing date or today's date instead`)
+          }
           const existing = existingByText.get(text.toLowerCase())
           if (existing) {
             dispatch({
@@ -331,10 +355,12 @@ export default function RecurringView() {
             }
             dispatch({ type: 'ADD_ENTRY', payload: entry })
           }
+          count++
+        } catch (err) {
+          warnings.push(`Row ${i + 1}: error — ${err instanceof Error ? err.message : 'invalid format'}`)
         }
-      } catch {
-        /* ignore invalid file */
       }
+      setImportResult({ count, warnings })
     }
     reader.readAsText(file)
     e.target.value = ''
@@ -420,6 +446,37 @@ export default function RecurringView() {
           </button>
         </div>
       </div>
+
+      {/* Import result banner */}
+      {importResult && (
+        <div style={{
+          border: `1px solid ${importResult.warnings.length > 0 ? 'var(--color-amber)' : 'var(--color-green)'}`,
+          borderRadius: 12,
+          padding: '14px 18px',
+          marginBottom: 20,
+          background: importResult.warnings.length > 0 ? 'var(--color-amber-light)' : 'var(--color-green-light)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+        }}>
+          <div style={{ flex: 1, fontSize: 13, color: 'var(--color-text)', lineHeight: 1.5 }}>
+            <strong>{importResult.count} entries imported.</strong>
+            {importResult.warnings.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                {importResult.warnings.map((w, i) => (
+                  <div key={i} style={{ fontSize: 12, color: 'var(--color-text2)', marginTop: 2 }}>{w}</div>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setImportResult(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--color-text3)', flexShrink: 0 }}
+          >
+            <Icon name="x" size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Add form */}
       {showForm && (
