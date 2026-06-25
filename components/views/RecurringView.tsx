@@ -117,7 +117,14 @@ export default function RecurringView() {
       result.push({ entry, occs })
     }
 
-    result.sort((a, b) => a.entry.text.localeCompare(b.entry.text))
+    result.sort((a, b) => {
+      const aNext = a.occs.find((o) => !o.completed)
+      const bNext = b.occs.find((o) => !o.completed)
+      const aDate = aNext?.date || ''
+      const bDate = bNext?.date || ''
+      if (aDate !== bDate) return aDate.localeCompare(bDate)
+      return a.entry.text.localeCompare(b.entry.text)
+    })
     return result
   }, [recurringEntries, entries])
 
@@ -163,9 +170,9 @@ export default function RecurringView() {
     const u = cfg?.unit || 'week'
     const pair: Record<string, [string, string]> = {
       day: ['var(--color-amber)', 'var(--color-amber-light)'],
-      week: ['var(--color-accent)', 'var(--color-accent-light)'],
+      week: ['var(--color-blue)', 'var(--color-blue-light)'],
       month: ['var(--color-green)', 'var(--color-green-light)'],
-      year: ['var(--color-red)', 'var(--color-red-light)'],
+      year: ['var(--color-brown)', 'var(--color-brown-light)'],
     }
     return pair[u] || ['var(--color-text3)', 'var(--color-bg3)']
   }

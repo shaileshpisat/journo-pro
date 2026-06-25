@@ -1,7 +1,7 @@
 # JournoPro — Codebase Map
 
 > Reference document for feature development and bug fixes.
-> Last updated: 2026-06-24 (RecurringView: added day(s) unit; fixed import tag/date validation)
+> Last updated: 2026-06-25 (RecurringView: sort by next open occurrence date instead of title)
 
 ---
 
