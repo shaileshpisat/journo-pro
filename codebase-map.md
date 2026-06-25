@@ -329,7 +329,7 @@ type ViewName =
 - On **mount**: reads `jp_entries`, `jp_view`, `jp_activeTimers`, `jp_currency`, and `jp_searchFilters` once via `useEffect` + `useRef` guard.
 - On **state change**: `useEffect` watching `state.entries` → saves to `jp_entries`; same for `state.view`, `state.activeTimers`, `state.currency`, and `state.searchFilters`.
 - **Seed data**: If localStorage is empty, `SEED_ENTRIES` is used as initial state.
-- **Auto-reload**: `jp_lastReload` is checked on every mount. If 12+ hours have elapsed, `reloadPending` is set instead of immediately reloading — the app waits for recurring-task resolution first.
+- **Auto-reload**: `jp_lastReload` is checked on every mount AND every 60s via `setInterval`. If 12+ hours have elapsed, `reloadPending` is set instead of immediately reloading — the app waits for recurring-task resolution first.
 - **Recurring task check**: Runs once after hydration. Entries with `isTask && !isTaskDone && tags.includes('recurring') && past actionDate` are processed. If multiple period tags exist (`daily`/`weekdays`/`weekend`/`weekly`/`monthly`/`quarterly`/`yearly` or `every-N-unit` format), they're shown in `RecurringTagPicker`. Single/no-tag entries are auto-advanced (actionDate + period until >= today, or set to today).
 
 ### Consuming state in components

@@ -540,6 +540,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.location.reload()
   }, [state.reloadPending, state.pendingRecurring, state.entries])
 
+  // Continuous check: reload after every 12 hours even if app stays open
+  useEffect(() => {
+    if (!hydrated.current) return
+    const id = setInterval(() => {
+      if (reloadTriggered.current) return
+      try {
+        const lastReload = window.localStorage.getItem('jp_lastReload')
+        if (lastReload && Date.now() - Number(lastReload) >= RELOAD_INTERVAL) {
+          window.localStorage.setItem('jp_lastReload', String(Date.now()))
+          dispatch({ type: 'SET_RELOAD_PENDING', payload: true })
+        }
+      } catch {}
+    }, 60000)
+    return () => clearInterval(id)
+  }, [dispatch])
+
   // Persist entries
   useEffect(() => {
     if (!hydrated.current) return

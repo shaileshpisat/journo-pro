@@ -25,6 +25,7 @@ export default function HomeView() {
   const [newReminderTitle, setNewReminderTitle] = useState('')
   const [newReminderDate, setNewReminderDate] = useState(todayLocalStr())
   const [editingReminderId, setEditingReminderId] = useState<number | null>(null)
+  const [commentHoveredId, setCommentHoveredId] = useState<number | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDate, setEditDate] = useState('')
 
@@ -809,26 +810,64 @@ export default function HomeView() {
                               <Icon name="stopwatch" size={12} />
                             )}
                           </button>
-                          <button
-                            onClick={(ev) => { ev.stopPropagation(); dispatch({ type: 'SELECT_ENTRY', payload: e }) }}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              padding: '3px 4px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 3,
-                              borderRadius: 4,
-                              color: 'var(--color-text3)',
-                              fontSize: 11,
-                              fontFamily: "'DM Mono', monospace",
-                            }}
-                            title="Comments"
+                          <div
+                            onMouseEnter={() => setCommentHoveredId(e.id)}
+                            onMouseLeave={() => setCommentHoveredId(null)}
+                            style={{ position: 'relative' }}
                           >
-                            <Icon name="messageSquare" size={12} />
-                            {(e.comments?.length ?? 0) > 0 && <span>{e.comments.length}</span>}
-                          </button>
+                            <button
+                              onClick={(ev) => { ev.stopPropagation(); dispatch({ type: 'SELECT_ENTRY', payload: e }) }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '3px 4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                borderRadius: 4,
+                                color: 'var(--color-text3)',
+                                fontSize: 11,
+                                fontFamily: "'DM Mono', monospace",
+                              }}
+                            >
+                              <Icon name="messageSquare" size={12} />
+                              {(e.comments?.length ?? 0) > 0 && <span>{e.comments.length}</span>}
+                            </button>
+                            {commentHoveredId === e.id && (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  bottom: '100%',
+                                  right: 0,
+                                  marginBottom: 6,
+                                  background: '#1a1a18',
+                                  color: '#fff',
+                                  borderRadius: 8,
+                                  padding: '8px 10px',
+                                  fontSize: 11,
+                                  lineHeight: 1.4,
+                                  whiteSpace: 'nowrap',
+                                  zIndex: 100,
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                                  pointerEvents: 'none',
+                                }}
+                              >
+                                {(e.comments?.length ?? 0) > 0 ? (
+                                  <>
+                                    <div style={{ fontWeight: 500, marginBottom: 2 }}>
+                                      {e.comments[e.comments.length - 1].text}
+                                    </div>
+                                    <div style={{ opacity: 0.6, fontFamily: "'DM Mono', monospace" }}>
+                                      {new Date(e.comments[e.comments.length - 1].timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <span style={{ opacity: 0.6 }}>No comments yet</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
