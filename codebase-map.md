@@ -595,6 +595,7 @@ No props — reads `dispatch` from context.
 - Leading `-` stripped from text and sets `markTask = true` (task toggle)
 - Submit: `Cmd/Ctrl+Enter` or button
 - Creates entry with `id: Date.now()`, `timestamp: new Date().toISOString()`
+- If `actionDate` is set and is not today, records an `entryAdded` history item (so timeline shows history instead of the entry card)
 - Dispatches `ADD_ENTRY`
 
 #### `TodayTimeline.tsx`
@@ -688,8 +689,8 @@ Sections (in order):
 2. `<JournalInput />` (centered, max-width 680px)
 3. Today summary pills (entities/folders/tags used today)
 4. **Quick nav** — centered pill buttons for "Action Today" (amber), "Needs Action" (red), and "Reminders" (accent), shown only when items exist; smooth-scroll to the respective section via `ref`
-5. **Today timeline** — `<TodayTimeline>` (entries where `isToday(timestamp)`, max 6) with a toggle switch (accent/gray pill) to show/hide history changes
-6. **Action today** — Recurring entries (amber border) with inline checkbox that dispatches `ADVANCE_RECURRING` (creates a completed entry for today and advances actionDate to next period). Non-recurring entries use standard minimal `<EntryCard>` with `onTaskToggle`. All filtered by `actionDate === today && !isToday(timestamp)`, amber panel.
+5. **Today timeline** — `<TodayTimeline>` (entries where `isToday(timestamp)` AND (`actionDate` is null or today), max 6) with a toggle switch (accent/gray pill) to show/hide history changes
+6. **Action today** — Recurring entries (amber border) with inline checkbox that dispatches `ADVANCE_RECURRING` (creates a completed entry for today and advances actionDate to next period). Both recurring and non-recurring entries show timer icon (stopwatch/pause/duration) and comment icon (messageSquare with count). Non-recurring entries use standard minimal `<EntryCard>` with `onTaskToggle`. All filtered by `actionDate === today && !isToday(timestamp)`, amber panel.
 7. **Needs action** — horizontal scroll of overdue minimal cards, red panel
 8. **Reminders** — floating panel on the left side of the timeline (width 280px), fixed-position just after the sidebar. Visible only when there are visible reminders (non-done + today-completed). Shows reminders grouped by Today / Older / Future. Each reminder row has a square/checkSquare icon (toggles done on click), the reminder title text (truncated with ellipsis; `title` attribute shows full text on hover; strikethrough + muted color when done today), and for Older/Future the date in `Mon DD` format. An edit icon (pencil, opacity 0.4) on each row opens inline editing for title and date. A "+ Add" button in the header toggles an inline form (text input + date picker + Save button). Completed reminders show with strikethrough until end of day; the next day they vanish. The quick-nav Reminders button shows count of overdue (past-date) reminders only.
 

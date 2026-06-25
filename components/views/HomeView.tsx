@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { isToday, isOverdue, todayLocalStr, toLocalDateStr } from '@/lib/predicates'
-import { fmtAmt, fmtDate } from '@/lib/formatters'
+import { fmtAmt, fmtDate, fmtDuration } from '@/lib/formatters'
 import { EntryHistory, Reminder } from '@/lib/types'
 import JournalInput from '@/components/entry/JournalInput'
 import EntryCard from '@/components/entry/EntryCard'
@@ -33,7 +33,7 @@ export default function HomeView() {
   }
 
   const activeEntries = entries.filter((e) => !e.archived)
-  const todayEntries = activeEntries.filter((e) => isToday(e.timestamp)).slice(0, 6)
+  const todayEntries = activeEntries.filter((e) => isToday(e.timestamp) && (!e.actionDate || e.actionDate === todayLocalStr())).slice(0, 6)
   const todayAction = activeEntries.filter(
     (e) => e.actionDate === todayLocalStr()
   )
@@ -738,6 +738,8 @@ export default function HomeView() {
               ))}
               {recurringToday.map((e) => {
                 const amt = fmtAmt(e.amount, e.amountType, state.currency)
+                const totalTracked = e.timeLogs ? e.timeLogs.reduce((s, l) => s + l.duration, 0) : 0
+                const timerActive = activeTimers.some((t) => t.entryId === e.id)
                 return (
                   <div key={e.id} style={{ minWidth: 260, maxWidth: 280, flexShrink: 0 }}>
                     <div
@@ -780,6 +782,53 @@ export default function HomeView() {
                               </span>
                             )}
                           </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                          <button
+                            onClick={(ev) => { ev.stopPropagation(); handleTimerToggle(e) }}
+                            style={{
+                              background: timerActive ? 'var(--color-red-light)' : totalTracked > 0 ? 'var(--color-accent-light)' : 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '3px 4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 3,
+                              borderRadius: 6,
+                              color: timerActive ? 'var(--color-red)' : totalTracked > 0 ? 'var(--color-accent)' : 'var(--color-text3)',
+                              fontFamily: "'DM Mono', monospace",
+                              fontSize: 11,
+                            }}
+                            title={timerActive ? 'Timer running' : totalTracked > 0 ? `${fmtDuration(totalTracked)} tracked` : 'Start timer'}
+                          >
+                            {timerActive ? (
+                              <Icon name="pause" size={12} />
+                            ) : totalTracked > 0 ? (
+                              <span style={{ fontWeight: 500 }}>{fmtDuration(totalTracked)}</span>
+                            ) : (
+                              <Icon name="stopwatch" size={12} />
+                            )}
+                          </button>
+                          <button
+                            onClick={(ev) => { ev.stopPropagation(); dispatch({ type: 'SELECT_ENTRY', payload: e }) }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '3px 4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 3,
+                              borderRadius: 4,
+                              color: 'var(--color-text3)',
+                              fontSize: 11,
+                              fontFamily: "'DM Mono', monospace",
+                            }}
+                            title="Comments"
+                          >
+                            <Icon name="messageSquare" size={12} />
+                            {(e.comments?.length ?? 0) > 0 && <span>{e.comments.length}</span>}
+                          </button>
                         </div>
                       </div>
                     </div>

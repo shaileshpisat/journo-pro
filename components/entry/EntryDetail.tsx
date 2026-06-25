@@ -942,7 +942,7 @@ export default function EntryDetail() {
               {[...entry.history].reverse().map((h, i) => {
                 const fmtOld = h.field === 'amount' ? fmtAmt(Number(h.oldValue), entry.amountType, state.currency)?.label : h.field === 'pghMapping' ? pghMappingLabel(h.oldValue, state.projects, state.goals, state.habits) : String(h.oldValue ?? '—')
                 const fmtNew = h.field === 'amount' ? fmtAmt(Number(h.newValue), entry.amountType, state.currency)?.label : h.field === 'pghMapping' ? pghMappingLabel(h.newValue, state.projects, state.goals, state.habits) : String(h.newValue ?? '—')
-                const fieldLabel = h.field === 'actionDate' ? 'Action date' : h.field === 'amountType' ? 'Amount type' : h.field === 'commentAdded' ? 'Comment added' : h.field === 'commentEdited' ? 'Comment edited' : h.field === 'pghMapping' ? 'Project-Goal-Habit mapping' : h.field.charAt(0).toUpperCase() + h.field.slice(1)
+                const fieldLabel = h.field === 'actionDate' ? 'Action date' : h.field === 'amountType' ? 'Amount type' : h.field === 'commentAdded' ? 'Comment added' : h.field === 'commentEdited' ? 'Comment edited' : h.field === 'entryAdded' ? 'Entry added' : h.field === 'pghMapping' ? 'Project-Goal-Habit mapping' : h.field.charAt(0).toUpperCase() + h.field.slice(1)
                 return (
                   <div key={i} style={{ padding: '5px 8px', background: 'var(--color-bg2)', borderRadius: 6 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>

@@ -363,19 +363,29 @@ export default function RecurringView() {
               {t}
             </span>
           ))}
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
-            <button onClick={() => startEditing(entry)} style={{
-              background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-              color: 'var(--color-text3)', opacity: 0.4,
-            }}>
-              <Icon name="edit" size={13} />
-            </button>
-            <button onClick={() => handleDelete(entry.id)} style={{
-              background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-              color: 'var(--color-text3)', opacity: 0.5,
-            }}>
-              <Icon name="trash" size={14} />
-            </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {entry.comments && entry.comments.length > 0 && (
+              <span title={entry.comments[entry.comments.length - 1].text} style={{
+                display: 'inline-flex', alignItems: 'center', cursor: 'default',
+                color: 'var(--color-text3)', opacity: 0.45,
+              }}>
+                <Icon name="messageSquare" size={12} />
+              </span>
+            )}
+            <div style={{ display: 'flex', gap: 2 }}>
+              <button onClick={() => startEditing(entry)} style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                color: 'var(--color-text3)', opacity: 0.4,
+              }}>
+                <Icon name="edit" size={13} />
+              </button>
+              <button onClick={() => handleDelete(entry.id)} style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                color: 'var(--color-text3)', opacity: 0.5,
+              }}>
+                <Icon name="trash" size={14} />
+              </button>
+            </div>
           </div>
         </div>
 

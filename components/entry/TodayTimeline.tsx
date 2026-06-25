@@ -58,6 +58,7 @@ function fmtHistField(field: string): string {
     archived: 'Archive',
     commentAdded: 'Comment added',
     commentEdited: 'Comment edited',
+    entryAdded: 'Entry added',
   }
   return map[field] || field
 }

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Entry } from '@/lib/types'
 import { parseEntry } from '@/lib/parser'
 import { fmtDate } from '@/lib/formatters'
+import { todayLocalStr } from '@/lib/predicates'
 import Chip from '@/components/ui/Chip'
 import Icon from '@/components/ui/Icon'
 import { useAppState } from '@/context/AppContext'
@@ -168,6 +169,8 @@ export default function JournalInput() {
 
   const handleSubmit = () => {
     if (!text.trim()) return
+    const today = todayLocalStr()
+    const hasFutureDate = parsed.actionDate && parsed.actionDate !== today
     const entry: Entry = {
       id: Date.now(),
       text: text.trim(),
@@ -179,7 +182,7 @@ export default function JournalInput() {
       amountType: parsed.amountType || null,
       mentions: parsed.mentions || [],
       timeLogs: [],
-      history: [],
+      history: hasFutureDate ? [{ timestamp: Date.now(), field: 'entryAdded', oldValue: null, newValue: parsed.actionDate }] : [],
       comments: [],
       isTask: markTask,
       isTaskDone: false,
